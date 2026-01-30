@@ -30,7 +30,7 @@
     "expo-secure-store": "^14.0.1",
     "expo-splash-screen": "~0.30.10",
     "expo-status-bar": "~2.2.3",
-    "lucide-react-native": "^0.468.0",
+    "lucide-react-native": "^0.563.0",
     "nativewind": "~4.1.23",
     "react": "19.0.0",
     "react-dom": "19.0.0",
