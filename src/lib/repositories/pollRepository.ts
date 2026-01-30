@@ -8,6 +8,7 @@ interface PollRow {
   status: string;
   created_at: string;
   finalized_slot_id: string | null;
+  finalized_at?: string | null;
   creator_id?: string | null;
   creator_session_id?: string | null;
   date_range_start?: string | null;
@@ -22,6 +23,7 @@ function mapPollRow(row: PollRow): PollRecord {
     status: row.status as PollRecord['status'],
     createdAt: row.created_at,
     finalizedSlotId: row.finalized_slot_id ?? null,
+    finalizedAt: row.finalized_at ?? null,
     creatorId: row.creator_id ?? row.creator_session_id ?? null,
     dateRangeStart: row.date_range_start ?? null,
     dateRangeEnd: row.date_range_end ?? null,
@@ -65,6 +67,7 @@ export async function createPoll(poll: PollRecord): Promise<void> {
       status: poll.status,
       created_at: poll.createdAt,
       finalized_slot_id: poll.finalizedSlotId,
+      finalized_at: poll.finalizedAt ?? null,
       creator_id: poll.creatorId ?? null,
       date_range_start: poll.dateRangeStart ?? null,
       date_range_end: poll.dateRangeEnd ?? null,
@@ -84,6 +87,7 @@ export async function finalizePoll(pollId: string, slotId: string): Promise<void
     body: {
       status: 'finalized',
       finalized_slot_id: slotId,
+      finalized_at: new Date().toISOString(),
     },
   });
 }

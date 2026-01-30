@@ -337,6 +337,7 @@ export function useCreatePoll() {
         status: 'open',
         createdAt,
         finalizedSlotId: null,
+        finalizedAt: null,
         creatorId: sessionId,
         dateRangeStart: pollData.dateRangeStart,
         dateRangeEnd: pollData.dateRangeEnd,

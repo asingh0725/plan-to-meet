@@ -42,6 +42,7 @@ export interface PollRecord {
   status: 'open' | 'finalized';
   createdAt: string;
   finalizedSlotId: string | null;
+  finalizedAt?: string | null;
   creatorId?: string | null;
   dateRangeStart?: string | null;
   dateRangeEnd?: string | null;

@@ -25,6 +25,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
+import * as ExpoCalendar from 'expo-calendar';
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -301,6 +302,41 @@ export default function PollDetailScreen() {
     finalizePollMutation.mutate({ pollId: poll.id, slotId });
   };
 
+  const handleCreateCalendarEvent = async () => {
+    if (!poll?.finalizedSlotId) return;
+    const finalizedSlot = poll.timeSlots.find((slot) => slot.id === poll.finalizedSlotId);
+    if (!finalizedSlot) return;
+
+    const { status } = await ExpoCalendar.requestCalendarPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Calendar Access', 'Allow calendar access to create an event.');
+      return;
+    }
+
+    const calendars = await ExpoCalendar.getCalendarsAsync(ExpoCalendar.EntityTypes.EVENT);
+    const defaultCalendar =
+      calendars.find((calendar) => calendar.isPrimary) ||
+      calendars.find((calendar) => calendar.allowsModifications) ||
+      calendars[0];
+
+    if (!defaultCalendar) {
+      Alert.alert('No Calendar Found', 'Please create a calendar to add events.');
+      return;
+    }
+
+    const startDate = new Date(`${finalizedSlot.day}T${finalizedSlot.startTime}:00`);
+    const endDate = new Date(`${finalizedSlot.day}T${finalizedSlot.endTime}:00`);
+
+    await ExpoCalendar.createEventAsync(defaultCalendar.id, {
+      title: poll.title,
+      startDate,
+      endDate,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+
+    Alert.alert('Event Added', 'The finalized time was added to your calendar.');
+  };
+
   const handleDelete = () => {
     if (!poll || !isCreator) return;
 
@@ -420,6 +456,16 @@ export default function PollDetailScreen() {
                       poll.timeSlots.find((s: TimeSlot) => s.id === poll.finalizedSlotId)!
                     )}
                   </Text>
+                )}
+                {poll.finalizedSlotId && (
+                  <Pressable
+                    onPress={handleCreateCalendarEvent}
+                    className="mt-3 px-3 py-2 rounded-lg bg-emerald-900/60 self-start"
+                  >
+                    <Text className="text-emerald-300 text-xs font-semibold">
+                      Create Calendar Event
+                    </Text>
+                  </Pressable>
                 )}
               </View>
             )}
