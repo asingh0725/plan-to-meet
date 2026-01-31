@@ -70,10 +70,13 @@ function TimeSlotCard({
 }: TimeSlotCardProps) {
   const stats = getSlotStats(responses, slot.id);
 
-  const handleRespond = (availability: Availability) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onRespond(availability);
-  };
+  const handleRespond = useCallback(
+    (availability: Availability) => {
+      onRespond(availability);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [onRespond]
+  );
 
   return (
     <Animated.View
