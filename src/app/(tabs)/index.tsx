@@ -26,6 +26,7 @@ import {
   useCurrentUser,
   formatSlotDate,
   formatSlotTime,
+  parseDateKey,
   type Poll,
   type TimeSlot,
   type Response,
@@ -45,7 +46,7 @@ function PollCard({ poll, currentUserId, onPress, index }: PollCardProps) {
   const isFinalized = poll.status === 'finalized';
 
   const respondentCount = useMemo(() => {
-    const uniqueParticipants = new Set(poll.responses.map((r) => r.participantId));
+    const uniqueParticipants = new Set(poll.responses.map((r) => r.sessionId));
     return uniqueParticipants.size;
   }, [poll.responses]);
 
@@ -85,9 +86,13 @@ function PollCard({ poll, currentUserId, onPress, index }: PollCardProps) {
               </Text>
             ) : (
               <Text className="text-zinc-500 text-sm mt-1">
-                {format(new Date(poll.dateRangeStart), 'MMM d')} -{' '}
-                {format(new Date(poll.dateRangeEnd), 'MMM d')}
-              </Text>
+  {poll.timeSlots.length > 0
+    ? `${formatSlotDate(poll.timeSlots[0])} – ${formatSlotDate(
+        poll.timeSlots[poll.timeSlots.length - 1]
+      )}`
+    : 'No dates selected'}
+</Text>
+
             )}
 
             <View className="flex-row items-center gap-4 mt-3">
@@ -147,7 +152,7 @@ export default function HomeScreen() {
     const responded = polls.filter(
       (p) =>
         p.creatorId !== currentUserId &&
-        p.responses.some((r) => r.participantId === currentUserId)
+        p.responses.some((r) => r.sessionId === currentUserId)
     );
 
     // Sort by most recent first
