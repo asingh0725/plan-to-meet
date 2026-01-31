@@ -392,11 +392,14 @@ export function useAddResponse() {
       const storedName = await getStoredDisplayName();
       const displayName = participantName || storedName || 'Anonymous';
 
-      await upsertParticipant({
-        pollId,
-        sessionId,
-        displayName,
-      });
+      const existingParticipant = await getParticipant(pollId, sessionId);
+      if (!existingParticipant) {
+        await upsertParticipant({
+          pollId,
+          sessionId,
+          displayName,
+        });
+      }
 
       await upsertResponse(pollId, slotId, sessionId, availability);
     },
