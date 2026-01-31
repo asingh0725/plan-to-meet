@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -80,6 +80,8 @@ export default function CreatePollScreen() {
   const [dateRangeEnd, setDateRangeEnd] = useState(addDays(new Date(), 6));
   const [dayAvailability, setDayAvailability] = useState<DayAvailabilityBlock[]>([]);
   const [showGridPicker, setShowGridPicker] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Calendar integration state
   const [useCalendar, setUseCalendar] = useState(false);
@@ -119,6 +121,14 @@ export default function CreatePollScreen() {
   }, [previewSlots, useCalendar, calendarEvents]);
 
   // Fetch calendar events when calendar is enabled or date range changes
+  useEffect(() => {
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!useCalendar || !calendarPermission) {
       setCalendarEvents([]);
@@ -182,6 +192,16 @@ export default function CreatePollScreen() {
   // Validation
   const canCreatePoll = previewSlots.length > 0;
 
+  const showErrorToast = useCallback((message: string) => {
+    setErrorMessage(message);
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+    }
+    errorTimeoutRef.current = setTimeout(() => {
+      setErrorMessage(null);
+    }, 3000);
+  }, []);
+
   const handleCreatePoll = useCallback(async () => {
     if (!canCreatePoll) return;
 
@@ -200,8 +220,20 @@ export default function CreatePollScreen() {
       router.replace(`/poll/${pollId}`);
     } catch (error) {
       console.log('Error creating poll:', error);
+      showErrorToast('Something went wrong. Please try again.');
     }
-  }, [title, duration, dateRangeStart, dateRangeEnd, dayAvailability, previewSlots, createPollMutation, router, canCreatePoll]);
+  }, [
+    title,
+    duration,
+    dateRangeStart,
+    dateRangeEnd,
+    dayAvailability,
+    previewSlots,
+    createPollMutation,
+    router,
+    canCreatePoll,
+    showErrorToast,
+  ]);
 
   const formatDurationLabel = (d: number) => {
     if (d < 60) return `${d}-minute`;
@@ -586,6 +618,16 @@ export default function CreatePollScreen() {
           </Animated.View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {errorMessage && (
+        <View className="absolute left-5 right-5 bottom-28">
+          <View className="bg-red-600/95 rounded-2xl px-4 py-3 shadow-lg">
+            <Text className="text-white text-sm font-semibold text-center">
+              {errorMessage}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Date Picker Modal (iOS) */}
       {Platform.OS === 'ios' && datePicker.visible && (

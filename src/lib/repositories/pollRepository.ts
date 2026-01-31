@@ -68,7 +68,7 @@ export async function createPoll(poll: PollRecord): Promise<void> {
       created_at: poll.createdAt,
       finalized_slot_id: poll.finalizedSlotId,
       finalized_at: poll.finalizedAt ?? null,
-      creator_id: poll.creatorId ?? null,
+      creator_session_id: poll.creatorId ?? null,
       date_range_start: poll.dateRangeStart ?? null,
       date_range_end: poll.dateRangeEnd ?? null,
     },

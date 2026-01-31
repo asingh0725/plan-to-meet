@@ -210,6 +210,9 @@ export default function AvailabilityGridPicker({
   );
 
   const lastToggledCell = useRef<string | null>(null);
+  const headerScrollRef = useRef<ScrollView | null>(null);
+  const gridScrollRef = useRef<ScrollView | null>(null);
+  const activeHorizontalScroll = useRef<'header' | 'grid' | null>(null);
 
   // Calculate column width
   const columnWidth = Math.max(
@@ -275,6 +278,12 @@ export default function AvailabilityGridPicker({
   }, [onCancel]);
 
   const selectedCount = selectedCells.size;
+
+  const syncHorizontalScroll = useCallback((x: number, source: 'header' | 'grid') => {
+    // Keep header + grid aligned without triggering scroll feedback loops.
+    const target = source === 'header' ? gridScrollRef.current : headerScrollRef.current;
+    target?.scrollTo({ x, animated: false });
+  }, []);
 
   return (
     <View className="flex-1 bg-zinc-950">
@@ -348,7 +357,22 @@ export default function AvailabilityGridPicker({
             <View style={{ width: TIME_LABEL_WIDTH }} />
             <ScrollView
               horizontal
+              ref={headerScrollRef}
               showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              onScrollBeginDrag={() => {
+                activeHorizontalScroll.current = 'header';
+              }}
+              onScroll={(event) => {
+                if (activeHorizontalScroll.current !== 'header') return;
+                syncHorizontalScroll(event.nativeEvent.contentOffset.x, 'header');
+              }}
+              onScrollEndDrag={() => {
+                activeHorizontalScroll.current = null;
+              }}
+              onMomentumScrollEnd={() => {
+                activeHorizontalScroll.current = null;
+              }}
               contentContainerStyle={{ flexDirection: 'row' }}
             >
               {dateColumns.map((dateKey) => {
@@ -393,7 +417,22 @@ export default function AvailabilityGridPicker({
             {/* Grid Cells */}
             <ScrollView
               horizontal
+              ref={gridScrollRef}
               showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              onScrollBeginDrag={() => {
+                activeHorizontalScroll.current = 'grid';
+              }}
+              onScroll={(event) => {
+                if (activeHorizontalScroll.current !== 'grid') return;
+                syncHorizontalScroll(event.nativeEvent.contentOffset.x, 'grid');
+              }}
+              onScrollEndDrag={() => {
+                activeHorizontalScroll.current = null;
+              }}
+              onMomentumScrollEnd={() => {
+                activeHorizontalScroll.current = null;
+              }}
               contentContainerStyle={{ flexDirection: 'row' }}
             >
               {dateColumns.map((dateKey) => (
