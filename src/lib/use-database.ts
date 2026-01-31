@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { v4 as uuidv4 } from 'uuid';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { v4 as uuidv4 } from "uuid";
 
 import {
   countDaysWithAvailability,
@@ -13,35 +13,39 @@ import {
   getDateKey,
   groupSlotsByDate,
   parseDateKey,
-} from './availability';
-import { getOrCreateSessionId, getStoredDisplayName, setStoredDisplayName } from './identity';
+} from "./availability";
+import {
+  getOrCreateSessionId,
+  getStoredDisplayName,
+  setStoredDisplayName,
+} from "./identity";
 import {
   insertAvailabilityBlocks,
   listAvailabilityBlocks,
-} from './repositories/availabilityRepository';
+} from "./repositories/availabilityRepository";
 import {
   createPoll,
   deletePoll,
   finalizePoll,
   getPoll,
   listPolls,
-} from './repositories/pollRepository';
+} from "./repositories/pollRepository";
 import {
   getParticipant,
   updateDisplayNameForSession,
   upsertParticipant,
-} from './repositories/participantRepository';
+} from "./repositories/participantRepository";
 import {
   listResponses,
   listResponsesForPolls,
   upsertResponse,
-} from './repositories/responseRepository';
+} from "./repositories/responseRepository";
 import {
   insertTimeSlots,
   hasTimeSlots,
   listTimeSlots,
   listTimeSlotsForPolls,
-} from './repositories/slotRepository';
+} from "./repositories/slotRepository";
 import type {
   Availability,
   DayAvailabilityBlock,
@@ -50,7 +54,7 @@ import type {
   PreviewTimeSlot,
   Response,
   TimeSlot,
-} from './types';
+} from "./types";
 
 export type {
   Availability,
@@ -63,12 +67,12 @@ export type {
 };
 
 export const queryKeys = {
-  database: ['database'] as const,
-  user: ['user'] as const,
-  polls: ['polls'] as const,
-  myPolls: ['polls', 'mine'] as const,
-  respondedPolls: ['polls', 'responded'] as const,
-  poll: (id: string) => ['polls', id] as const,
+  database: ["database"] as const,
+  user: ["user"] as const,
+  polls: ["polls"] as const,
+  myPolls: ["polls", "mine"] as const,
+  respondedPolls: ["polls", "responded"] as const,
+  poll: (id: string) => ["polls", id] as const,
 };
 
 function resolveDateRange(
@@ -92,7 +96,7 @@ function resolveDateRange(
     return { start: sorted[0], end: sorted[sorted.length - 1] };
   }
 
-  const fallback = poll.createdAt.split('T')[0];
+  const fallback = poll.createdAt.split("T")[0];
   return { start: fallback, end: fallback };
 }
 
@@ -106,7 +110,7 @@ function buildPollView(
 
   return {
     ...poll,
-    creatorId: poll.creatorId ?? '',
+    creatorId: poll.creatorId ?? "",
     dateRangeStart: start,
     dateRangeEnd: end,
     timeSlots: slots,
@@ -196,7 +200,7 @@ export function useMyPolls() {
   const { data: user } = useCurrentUser();
 
   return useQuery({
-    queryKey: [...queryKeys.myPolls, user?.id ?? ''],
+    queryKey: [...queryKeys.myPolls, user?.id ?? ""],
     queryFn: async () => {
       if (!user?.id) return [];
       const polls = await listPolls();
@@ -245,7 +249,7 @@ export function useRespondedPolls() {
   const { data: user } = useCurrentUser();
 
   return useQuery({
-    queryKey: [...queryKeys.respondedPolls, user?.id ?? ''],
+    queryKey: [...queryKeys.respondedPolls, user?.id ?? ""],
     queryFn: async () => {
       if (!user?.id) return [];
       const polls = await listPolls();
@@ -277,7 +281,9 @@ export function useRespondedPolls() {
       }
 
       const responded = polls.filter((poll) =>
-        (responsesByPoll.get(poll.id) ?? []).some((response) => response.sessionId === user.id)
+        (responsesByPoll.get(poll.id) ?? []).some(
+          (response) => response.sessionId === user.id
+        )
       );
 
       return responded.map((poll) =>
@@ -334,7 +340,7 @@ export function useCreatePoll() {
         id: pollId,
         title: pollData.title,
         durationMinutes: pollData.durationMinutes,
-        status: 'open',
+        status: "open",
         createdAt,
         finalizedSlotId: null,
         finalizedAt: null,
@@ -390,8 +396,9 @@ export function useAddResponse() {
     }) => {
       const sessionId = await getOrCreateSessionId();
       const storedName = await getStoredDisplayName();
-      const displayName = participantName || storedName || 'Anonymous';
+      const displayName = participantName || storedName || "Anonymous";
 
+      // Ensure participant exists before adding response
       const existingParticipant = await getParticipant(pollId, sessionId);
       if (!existingParticipant) {
         await upsertParticipant({
@@ -401,11 +408,18 @@ export function useAddResponse() {
         });
       }
 
+      // Save the response
       await upsertResponse(pollId, slotId, sessionId, availability);
+
+      return { pollId, slotId, sessionId, availability };
     },
     onSuccess: (_, { pollId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.poll(pollId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.polls });
+      queryClient.invalidateQueries({ queryKey: queryKeys.respondedPolls });
+    },
+    onError: (error) => {
+      console.error("Failed to save response:", error);
     },
   });
 }
@@ -414,7 +428,13 @@ export function useFinalizePoll() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ pollId, slotId }: { pollId: string; slotId: string }) => {
+    mutationFn: async ({
+      pollId,
+      slotId,
+    }: {
+      pollId: string;
+      slotId: string;
+    }) => {
       await finalizePoll(pollId, slotId);
     },
     onSuccess: (_, { pollId }) => {
@@ -458,14 +478,17 @@ export function getSlotStats(
 ): { yes: number; maybe: number; no: number; total: number } {
   const slotResponses = responses.filter((r) => r.slotId === slotId);
   return {
-    yes: slotResponses.filter((r) => r.availability === 'yes').length,
-    maybe: slotResponses.filter((r) => r.availability === 'maybe').length,
-    no: slotResponses.filter((r) => r.availability === 'no').length,
+    yes: slotResponses.filter((r) => r.availability === "yes").length,
+    maybe: slotResponses.filter((r) => r.availability === "maybe").length,
+    no: slotResponses.filter((r) => r.availability === "no").length,
     total: slotResponses.length,
   };
 }
 
-export function rankSlots(timeSlots: TimeSlot[], responses: Response[]): TimeSlot[] {
+export function rankSlots(
+  timeSlots: TimeSlot[],
+  responses: Response[]
+): TimeSlot[] {
   return [...timeSlots].sort((a, b) => {
     const statsA = getSlotStats(responses, a.id);
     const statsB = getSlotStats(responses, b.id);

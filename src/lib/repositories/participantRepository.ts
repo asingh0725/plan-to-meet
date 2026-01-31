@@ -8,20 +8,38 @@ interface ParticipantRow {
 }
 
 export async function upsertParticipant(participant: Participant): Promise<void> {
-  await supabaseRequest('participants', {
-    method: 'POST',
-    params: {
-      on_conflict: 'poll_id,session_id',
-    },
-    headers: {
-      Prefer: 'resolution=merge-duplicates,return=minimal',
-    },
-    body: {
-      poll_id: participant.pollId,
-      session_id: participant.sessionId,
-      display_name: participant.displayName ?? null,
-    },
-  });
+  // Check if participant already exists
+  const existing = await getParticipant(participant.pollId, participant.sessionId);
+
+  if (existing) {
+    // Update existing participant
+    await supabaseRequest('participants', {
+      method: 'PATCH',
+      params: {
+        poll_id: `eq.${participant.pollId}`,
+        session_id: `eq.${participant.sessionId}`,
+      },
+      headers: {
+        Prefer: 'return=minimal',
+      },
+      body: {
+        display_name: participant.displayName ?? null,
+      },
+    });
+  } else {
+    // Insert new participant
+    await supabaseRequest('participants', {
+      method: 'POST',
+      headers: {
+        Prefer: 'return=minimal',
+      },
+      body: {
+        poll_id: participant.pollId,
+        session_id: participant.sessionId,
+        display_name: participant.displayName ?? null,
+      },
+    });
+  }
 }
 
 export async function updateDisplayNameForSession(
