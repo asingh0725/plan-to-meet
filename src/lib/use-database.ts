@@ -12,6 +12,7 @@ import {
   generateSlotsFromAvailability,
   getDateKey,
   groupSlotsByDate,
+  isValidDate,
   parseDateKey,
 } from "./availability";
 import {
@@ -332,13 +333,42 @@ export function useCreatePoll() {
       dayAvailability: DayAvailabilityBlock[];
       timeSlots: PreviewTimeSlot[];
     }): Promise<string> => {
+      // Validation
+      const title = (pollData.title || "").trim() || "Find a time to meet";
+
+      if (!pollData.durationMinutes || pollData.durationMinutes <= 0) {
+        throw new Error("Duration must be greater than 0");
+      }
+
+      if (!pollData.timeSlots || pollData.timeSlots.length === 0) {
+        throw new Error("At least one time slot is required");
+      }
+
+      // Validate each slot has valid times
+      for (const slot of pollData.timeSlots) {
+        if (!slot.day || !slot.startTime || !slot.endTime) {
+          throw new Error("Each time slot must have day, startTime, and endTime");
+        }
+        if (slot.startTime >= slot.endTime) {
+          throw new Error("Start time must be before end time for each slot");
+        }
+      }
+
+      // Validate date range
+      if (!pollData.dateRangeStart || !pollData.dateRangeEnd) {
+        throw new Error("Date range is required");
+      }
+      if (pollData.dateRangeStart > pollData.dateRangeEnd) {
+        throw new Error("Start date must be before or equal to end date");
+      }
+
       const sessionId = await getOrCreateSessionId();
       const pollId = uuidv4();
       const createdAt = new Date().toISOString();
 
       const pollRecord: PollRecord = {
         id: pollId,
-        title: pollData.title,
+        title,
         durationMinutes: pollData.durationMinutes,
         status: "open",
         createdAt,
@@ -376,6 +406,9 @@ export function useCreatePoll() {
       queryClient.invalidateQueries({ queryKey: queryKeys.polls });
       queryClient.invalidateQueries({ queryKey: queryKeys.myPolls });
     },
+    onError: (error) => {
+      console.error("Failed to create poll:", error);
+    },
   });
 }
 
@@ -394,6 +427,20 @@ export function useAddResponse() {
       availability: Availability;
       participantName?: string;
     }) => {
+      // Validate inputs
+      if (!pollId || !slotId || !availability) {
+        throw new Error("Missing required fields: pollId, slotId, or availability");
+      }
+
+      // Check if poll exists and is not finalized
+      const poll = await getPoll(pollId);
+      if (!poll) {
+        throw new Error("Poll not found");
+      }
+      if (poll.status === "finalized") {
+        throw new Error("Cannot respond to a finalized poll");
+      }
+
       const sessionId = await getOrCreateSessionId();
       const storedName = await getStoredDisplayName();
       const displayName = participantName || storedName || "Anonymous";
@@ -435,11 +482,35 @@ export function useFinalizePoll() {
       pollId: string;
       slotId: string;
     }) => {
+      // Validate inputs
+      if (!pollId || !slotId) {
+        throw new Error("Missing required fields: pollId or slotId");
+      }
+
+      // Check if poll exists and is not already finalized
+      const poll = await getPoll(pollId);
+      if (!poll) {
+        throw new Error("Poll not found");
+      }
+      if (poll.status === "finalized") {
+        throw new Error("Poll is already finalized");
+      }
+
+      // Validate slotId belongs to this poll
+      const slots = await listTimeSlots(pollId);
+      const slotExists = slots.some((s) => s.id === slotId);
+      if (!slotExists) {
+        throw new Error("Invalid slot for this poll");
+      }
+
       await finalizePoll(pollId, slotId);
     },
     onSuccess: (_, { pollId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.poll(pollId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.polls });
+    },
+    onError: (error) => {
+      console.error("Failed to finalize poll:", error);
     },
   });
 }
@@ -449,11 +520,17 @@ export function useDeletePoll() {
 
   return useMutation({
     mutationFn: async (pollId: string) => {
+      if (!pollId) {
+        throw new Error("Poll ID is required");
+      }
       await deletePoll(pollId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.polls });
       queryClient.invalidateQueries({ queryKey: queryKeys.myPolls });
+    },
+    onError: (error) => {
+      console.error("Failed to delete poll:", error);
     },
   });
 }
@@ -469,6 +546,7 @@ export {
   generateSlotsFromAvailability,
   getDateKey,
   groupSlotsByDate,
+  isValidDate,
   parseDateKey,
 };
 

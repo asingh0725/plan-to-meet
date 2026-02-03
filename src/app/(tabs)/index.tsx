@@ -18,15 +18,12 @@ import Animated, {
   FadeInUp,
   FadeIn,
 } from 'react-native-reanimated';
-import { format } from 'date-fns';
-
 import { cn } from '@/lib/cn';
 import {
   usePolls,
   useCurrentUser,
   formatSlotDate,
   formatSlotTime,
-  parseDateKey,
   type Poll,
   type TimeSlot,
   type Response,

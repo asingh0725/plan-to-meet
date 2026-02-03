@@ -6,6 +6,8 @@ import type {
   PreviewTimeSlot,
 } from "./types";
 
+export { type DayAvailabilityBlock };
+
 // Availability is defined per-day with independent blocks (no implicit ranges).
 
 export function getDateKey(date: Date): string {
@@ -13,8 +15,22 @@ export function getDateKey(date: Date): string {
 }
 
 export function parseDateKey(dateKey: string): Date {
-  const [year, month, day] = dateKey.split("-").map(Number);
+  if (!dateKey || typeof dateKey !== "string") {
+    return new Date(NaN);
+  }
+  const parts = dateKey.split("-");
+  if (parts.length !== 3) {
+    return new Date(NaN);
+  }
+  const [year, month, day] = parts.map(Number);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    return new Date(NaN);
+  }
   return new Date(year, month - 1, day);
+}
+
+export function isValidDate(date: Date): boolean {
+  return date instanceof Date && !isNaN(date.getTime());
 }
 
 export function formatTime(hour: number, minute: number): string {
@@ -125,13 +141,16 @@ export function countDaysWithAvailability(
   return uniqueDates.size;
 }
 
-function buildDate(day: string, time: string, timezone = "UTC") {
-  // time = "HH:mm:ss"
+function buildDate(day: string, time: string) {
+  // time = "HH:mm" or "HH:mm:ss"
   // day = "YYYY-MM-DD"
+  if (!day || !time) {
+    throw new Error("Missing day or time");
+  }
   const iso = `${day}T${time}`;
   const date = new Date(iso);
 
-  if (isNaN(date.getTime())) {
+  if (!isValidDate(date)) {
     throw new Error(`Invalid date constructed from ${iso}`);
   }
 
@@ -160,14 +179,20 @@ export function formatSlotTime(slot: BaseTimeSlot): string {
     });
 
     return `${timeFormat.format(start)} – ${timeFormat.format(end)}`;
-  } catch (e) {
+  } catch {
     console.warn("Invalid slot time", slot);
     return "Invalid time";
   }
 }
 
 export function formatSlotDate(slot: BaseTimeSlot): string {
+  if (!slot?.day) {
+    return "Invalid date";
+  }
   const date = parseDateKey(slot.day);
+  if (!isValidDate(date)) {
+    return "Invalid date";
+  }
 
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
@@ -178,6 +203,9 @@ export function formatSlotDate(slot: BaseTimeSlot): string {
 
 export function formatDateHeader(dateKey: string): string {
   const date = parseDateKey(dateKey);
+  if (!isValidDate(date)) {
+    return "Invalid date";
+  }
   return new Intl.DateTimeFormat("en-US", {
     weekday: "long",
     month: "short",
@@ -187,6 +215,9 @@ export function formatDateHeader(dateKey: string): string {
 
 export function formatDateShort(dateKey: string): string {
   const date = parseDateKey(dateKey);
+  if (!isValidDate(date)) {
+    return "Invalid date";
+  }
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     month: "short",

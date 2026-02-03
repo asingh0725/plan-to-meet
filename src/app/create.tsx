@@ -26,7 +26,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as ExpoCalendar from 'expo-calendar';
-import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, addDays, differenceInDays, startOfDay, endOfDay } from 'date-fns';
 
@@ -205,11 +205,17 @@ export default function CreatePollScreen() {
   const handleCreatePoll = useCallback(async () => {
     if (!canCreatePoll) return;
 
+    // Additional client-side validation
+    if (dateRangeStart > dateRangeEnd) {
+      showErrorToast('Start date must be before end date.');
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       const pollId = await createPollMutation.mutateAsync({
-        title: title.trim() || 'Find a time to meet',
+        title: title.trim(),
         durationMinutes: duration,
         dateRangeStart: getDateKey(dateRangeStart),
         dateRangeEnd: getDateKey(dateRangeEnd),
@@ -219,8 +225,9 @@ export default function CreatePollScreen() {
 
       router.replace(`/poll/${pollId}`);
     } catch (error) {
-      console.log('Error creating poll:', error);
-      showErrorToast('Something went wrong. Please try again.');
+      console.error('Error creating poll:', error);
+      const message = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+      showErrorToast(message);
     }
   }, [
     title,
