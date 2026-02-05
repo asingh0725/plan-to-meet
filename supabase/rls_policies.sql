@@ -1,4 +1,4 @@
--- RLS policies for TimeTogether (apply in Supabase SQL editor).
+-- RLS policies for PlanToMeet (apply in Supabase SQL editor).
 -- These policies assume a custom JWT claim "session_id" is available to match anonymous sessions.
 
 -- Enable RLS

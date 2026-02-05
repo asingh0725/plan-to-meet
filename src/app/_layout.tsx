@@ -20,8 +20,8 @@ const queryClient = new QueryClient();
 
 // =============================================================================
 // PHASE 2: Deep Link Handling
-// Supports both universal links (https://timetogether.app/poll/{id}) and
-// custom scheme links (timetogether://poll/{id})
+// Supports both universal links (https://plantomeet.app/poll/{id}) and
+// custom scheme links (plantomeet://poll/{id})
 // =============================================================================
 
 /**
@@ -48,8 +48,8 @@ function extractPollIdFromUrl(url: string | null | undefined): string | null {
     return null;
   } catch {
     // URL parsing failed - try custom scheme pattern
-    // Handle timetogether://poll/{id} format
-    const schemeMatch = url.match(/^timetogether:\/\/poll\/([a-zA-Z0-9-]+)/);
+    // Handle plantomeet://poll/{id} format
+    const schemeMatch = url.match(/^plantomeet:\/\/poll\/([a-zA-Z0-9-]+)/);
     if (schemeMatch && schemeMatch[1]) {
       return schemeMatch[1];
     }

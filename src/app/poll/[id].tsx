@@ -376,7 +376,7 @@ export default function PollDetailScreen() {
     if (!poll) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const shareMessage = `${poll.title}\n\nHelp us find a time to meet! Respond here:\ntimetogether://poll/${poll.id}`;
+    const shareMessage = `${poll.title}\n\nHelp us find a time to meet! Respond here:\nplantomeet://poll/${poll.id}`;
 
     if (Platform.OS === "web") {
       try {

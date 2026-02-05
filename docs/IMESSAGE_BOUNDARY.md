@@ -1,4 +1,4 @@
-# TimeTogether iMessage Boundary
+# PlanToMeet iMessage Boundary
 
 ## Source of truth
 - All scheduling logic, availability modeling, and slot generation live in TypeScript.

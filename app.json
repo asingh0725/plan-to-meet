@@ -1,23 +1,23 @@
 {
   "expo": {
-    "name": "TimeTogether",
-    "slug": "timetogether",
-    "scheme": "timetogether",
+    "name": "PlanToMeet",
+    "slug": "plantomeet",
+    "scheme": "plantomeet",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.timetogether.app",
+      "bundleIdentifier": "com.aviraj.plantomeet",
       "associatedDomains": [
-        "applinks:timetogether.app",
-        "webcredentials:timetogether.app"
+        "applinks:plantomeet.app",
+        "webcredentials:plantomeet.app"
       ]
     },
     "android": {
       "edgeToEdgeEnabled": true,
-      "package": "com.timetogether.app",
+      "package": "com.aviraj.plantomeet",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -25,7 +25,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "timetogether.app",
+              "host": "plantomeet.app",
               "pathPrefix": "/poll"
             }
           ],
@@ -37,7 +37,7 @@
       [
         "expo-router",
         {
-          "origin": "https://timetogether.app"
+          "origin": "https://plantomeet.app"
         }
       ]
     ],

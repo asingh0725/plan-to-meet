@@ -194,7 +194,7 @@ export default function HomeScreen() {
         >
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-white text-2xl font-bold">TimeTogether</Text>
+              <Text className="text-white text-2xl font-bold">PlanToMeet</Text>
               <Text className="text-zinc-500 text-sm mt-0.5">
                 Find the perfect time to meet
               </Text>

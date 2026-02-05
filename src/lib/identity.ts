@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { v4 as uuidv4 } from 'uuid';
 
-const SESSION_ID_KEY = 'timetogether.sessionId';
-const DISPLAY_NAME_KEY = 'timetogether.displayName';
+const SESSION_ID_KEY = 'plantomeet.sessionId';
+const DISPLAY_NAME_KEY = 'plantomeet.displayName';
 
 async function getStorageItem(key: string): Promise<string | null> {
   try {

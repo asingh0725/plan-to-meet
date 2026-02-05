@@ -1,4 +1,4 @@
-# TimeTogether
+# PlanToMeet
 
 A mobile-first scheduling app that helps groups find a common time to meet. Inspired by When2Meet, optimized for sharing via iMessage/SMS/WhatsApp.
 
@@ -126,14 +126,14 @@ The app uses a React Query wrapper around Zustand store, providing:
 
 The app supports two URL formats for opening polls:
 
-1. **Universal Links** (recommended): `https://timetogether.app/poll/{pollId}`
-2. **Custom Scheme**: `timetogether://poll/{pollId}`
+1. **Universal Links** (recommended): `https://plantomeet.app/poll/{pollId}`
+2. **Custom Scheme**: `plantomeet://poll/{pollId}`
 
 ### Universal Links Setup (REQUIRED FOR PRODUCTION)
 
 For universal links to work, you must host an `apple-app-site-association` file on your domain.
 
-**Path**: `https://timetogether.app/.well-known/apple-app-site-association`
+**Path**: `https://plantomeet.app/.well-known/apple-app-site-association`
 
 **Content** (no `.json` extension, served with `application/json` content type):
 
@@ -143,13 +143,13 @@ For universal links to work, you must host an `apple-app-site-association` file 
     "apps": [],
     "details": [
       {
-        "appID": "TEAM_ID.com.timetogether.app",
+        "appID": "TEAM_ID.com.aviraj.plantomeet",
         "paths": ["/poll/*"]
       }
     ]
   },
   "webcredentials": {
-    "apps": ["TEAM_ID.com.timetogether.app"]
+    "apps": ["TEAM_ID.com.aviraj.plantomeet"]
   }
 }
 ```
@@ -170,14 +170,14 @@ The iMessage extension allows users to:
 3. Tap existing poll messages to open them in the main app
 
 **Bundle Identifiers**:
-- Main app: `com.timetogether.app`
-- iMessage extension: `com.timetogether.app.MessagesExtension`
+- Main app: `com.aviraj.plantomeet`
+- iMessage extension: `com.aviraj.plantomeet.messageextension`
 
 ### Deep Link Behavior
 
 | Scenario | Behavior |
 |----------|----------|
 | Valid poll ID, app installed | Opens poll detail screen |
-| Valid poll ID, app not installed | Opens web fallback (timetogether.app) |
+| Valid poll ID, app not installed | Opens web fallback (plantomeet.app) |
 | Invalid/missing poll ID | Shows "Poll not found" error screen |
 | Malformed URL | Silently ignored (no crash) |
