@@ -1,6 +1,6 @@
 # PlanToMeet
 
-A mobile-first scheduling app that helps groups find a common time to meet. Inspired by When2Meet, optimized for sharing via iMessage/SMS/WhatsApp.
+A mobile-first scheduling app that helps groups find a common time to meet. Inspired by When2Meet, optimized for sharing via iMessage/SMS.
 
 ## Features
 
