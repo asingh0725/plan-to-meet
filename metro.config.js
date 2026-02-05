@@ -1,5 +1,6 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
+const path = require("path");
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
@@ -18,7 +19,7 @@ config.transformer = {
   }),
 };
 
-// Configure resolver with web platform mocking
+// Configure resolver with web platform mocking and module deduplication
 config.resolver = {
   ...config.resolver,
   useWatchman: false,
@@ -36,6 +37,18 @@ config.resolver = {
           type: "empty",
         };
       }
+    }
+
+    // Deduplicate @react-navigation/native: expo-router bundles a nested
+    // copy whose LinkingContext is a different object from the top-level
+    // copy used by @react-navigation/native-stack. Force every import to
+    // resolve from the project root so a single LinkingContext is shared.
+    if (moduleName === "@react-navigation/native") {
+      return context.resolveRequest(
+        { ...context, originModulePath: path.resolve(__dirname, "index.ts") },
+        moduleName,
+        platform
+      );
     }
 
     // Fallback to default resolution

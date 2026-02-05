@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useCallback, useRef } from 'react';
+import { Platform } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -150,7 +151,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-            <DeepLinkHandler />
+            {Platform.OS !== 'web' && <DeepLinkHandler />}
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen

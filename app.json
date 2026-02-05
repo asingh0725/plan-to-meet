@@ -9,11 +9,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aviraj.plantomeet",
-      "associatedDomains": [
-        "applinks:plantomeet.app",
-        "webcredentials:plantomeet.app"
-      ]
+      "bundleIdentifier": "com.aviraj.plantomeet"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
     },
     "android": {
       "edgeToEdgeEnabled": true,
