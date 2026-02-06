@@ -7,16 +7,8 @@ export async function submitResponse(
   sessionId: string,
   availability: Availability
 ): Promise<void> {
-  // First, delete any existing response for this combination
-  await supabaseRequest(
-    `responses?poll_id=eq.${pollId}&slot_id=eq.${slotId}&session_id=eq.${sessionId}`,
-    {
-      method: 'DELETE',
-    }
-  )
-
-  // Then insert the new response
-  await supabaseRequest('responses', {
+  // Upsert using the actual unique constraint on (slot_id, session_id)
+  await supabaseRequest('responses?on_conflict=slot_id,session_id', {
     method: 'POST',
     body: {
       poll_id: pollId,
@@ -25,7 +17,7 @@ export async function submitResponse(
       availability,
     },
     headers: {
-      Prefer: 'return=minimal',
+      Prefer: 'return=minimal,resolution=merge-duplicates',
     },
   })
 }
