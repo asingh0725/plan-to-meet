@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Time Slot Model
 
@@ -133,7 +134,11 @@ struct AvailabilityGridView: View {
 
             Spacer()
 
-            Button(action: { onSave(selectedCells) }) {
+            Button(action: {
+                let feedback = UINotificationFeedbackGenerator()
+                feedback.notificationOccurred(.success)
+                onSave(selectedCells)
+            }) {
                 Image(systemName: "checkmark")
                     .font(.body.weight(.semibold))
                     .foregroundColor(.white)
@@ -265,6 +270,10 @@ struct AvailabilityGridView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
+            // Haptic feedback
+            let feedback = UIImpactFeedbackGenerator(style: .light)
+            feedback.impactOccurred()
+
             if selectedCells.contains(cellKey) {
                 selectedCells.remove(cellKey)
             } else {
@@ -329,6 +338,8 @@ struct AvailabilityGridView: View {
 
                 if !selectedCells.isEmpty {
                     Button("Clear all") {
+                        let feedback = UIImpactFeedbackGenerator(style: .medium)
+                        feedback.impactOccurred()
                         selectedCells.removeAll()
                     }
                     .font(.caption)
@@ -336,7 +347,13 @@ struct AvailabilityGridView: View {
                 }
             }
 
-            Button(action: { onSave(selectedCells) }) {
+            Button(action: {
+                if !selectedCells.isEmpty {
+                    let feedback = UINotificationFeedbackGenerator()
+                    feedback.notificationOccurred(.success)
+                }
+                onSave(selectedCells)
+            }) {
                 Text(selectedCells.isEmpty ? "Select Time Slots" : "Save Availability")
                     .font(.body.weight(.semibold))
                     .foregroundColor(selectedCells.isEmpty ? Color(red: 0.44, green: 0.44, blue: 0.48) : .white)

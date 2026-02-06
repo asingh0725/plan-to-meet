@@ -30,4 +30,5 @@ project.xcworkspace
 /Pods/
 
 # Secrets
+PlanToMeet/Secrets.xcconfig
 PlanToMeetMessages/Secrets.xcconfig
