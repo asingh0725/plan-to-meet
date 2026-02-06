@@ -2,6 +2,7 @@ import Combine
 import EventKit
 import Messages
 import SwiftUI
+import UIKit
 
 // MARK: - Poll Form ViewModel
 
@@ -27,8 +28,7 @@ final class PollFormViewModel: ObservableObject {
 
     private let eventStore = EKEventStore()
 
-    private static let webBaseURL = "https://plantomeet.app"
-    private static let sessionIdKey = "PlanToMeet_SessionId"
+    // Use shared AppState for session management
 
     // MARK: - Duration
 
@@ -60,7 +60,7 @@ final class PollFormViewModel: ObservableObject {
 
     var pollURL: URL? {
         guard let id = createdPollId else { return nil }
-        return URL(string: "\(Self.webBaseURL)/poll/\(id)")
+        return URL(string: "\(AppConstants.webBaseURL)/poll/\(id)")
     }
 
     var isFormValid: Bool {
@@ -136,15 +136,14 @@ final class PollFormViewModel: ObservableObject {
         return dates
     }
 
-    // MARK: - Session ID
+    // MARK: - Session ID (uses shared AppState via App Group)
 
-    private func getOrCreateSessionId() -> String {
-        if let existing = UserDefaults.standard.string(forKey: Self.sessionIdKey) {
-            return existing
-        }
-        let newId = UUID().uuidString.lowercased()
-        UserDefaults.standard.set(newId, forKey: Self.sessionIdKey)
-        return newId
+    private func getSessionId() -> String {
+        return AppState.shared.sessionId
+    }
+
+    private func getDisplayName() -> String {
+        return AppState.shared.displayNameOrDefault
     }
 
     // MARK: - Date/Time Helpers
@@ -347,7 +346,8 @@ final class PollFormViewModel: ObservableObject {
         errorMessage = nil
 
         let pollId = UUID().uuidString.lowercased()
-        let sessionId = getOrCreateSessionId()
+        let sessionId = getSessionId()
+        let displayName = getDisplayName()
         let blocks = generateAvailabilityBlocks(pollId: pollId)
         let slots = generateTimeSlots(pollId: pollId)
         let pollTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -367,12 +367,19 @@ final class PollFormViewModel: ObservableObject {
                 try await SupabaseAPI.insertParticipant(
                     pollId: pollId,
                     sessionId: sessionId,
-                    displayName: "Poll Creator"
+                    displayName: displayName
                 )
+
+                // Success haptic
+                let feedback = UINotificationFeedbackGenerator()
+                feedback.notificationOccurred(.success)
 
                 createdPollId = pollId
             } catch {
                 errorMessage = error.localizedDescription
+                // Error haptic
+                let feedback = UINotificationFeedbackGenerator()
+                feedback.notificationOccurred(.error)
             }
 
             isCreating = false

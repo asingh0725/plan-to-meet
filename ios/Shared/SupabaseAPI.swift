@@ -128,7 +128,7 @@ enum SupabaseAPI {
 
     // MARK: - Data Models
 
-    struct PollRow: Decodable {
+    struct PollRow: Decodable, Identifiable, Hashable {
         let id: String
         let title: String
         let durationMinutes: Int
@@ -136,9 +136,15 @@ enum SupabaseAPI {
         let createdAt: String
         let creatorSessionId: String?
         let finalizedSlotId: String?
+
+        var createdDate: Date? {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter.date(from: createdAt)
+        }
     }
 
-    struct TimeSlotRow: Decodable {
+    struct TimeSlotRow: Decodable, Identifiable {
         let id: String
         let pollId: String
         let day: String
@@ -232,7 +238,12 @@ enum SupabaseAPI {
             "display_name": displayName
         ]
 
-        let request = try makePostRequest(path: "/participants", body: body, upsert: true)
+        // Use on_conflict for proper upsert - unique constraint is on (poll_id, session_id)
+        let request = try makePostRequest(
+            path: "/participants?on_conflict=poll_id,session_id",
+            body: body,
+            upsert: true
+        )
         try await executePost(request)
     }
 
@@ -246,7 +257,12 @@ enum SupabaseAPI {
             "availability": availability
         ]
 
-        let request = try makePostRequest(path: "/responses", body: body, upsert: true)
+        // Use on_conflict for proper upsert - unique constraint is on (poll_id, slot_id, session_id)
+        let request = try makePostRequest(
+            path: "/responses?on_conflict=poll_id,slot_id,session_id",
+            body: body,
+            upsert: true
+        )
         try await executePost(request)
     }
 
@@ -260,6 +276,43 @@ enum SupabaseAPI {
         ])
         let rows: [PollRow] = try await executeGet(request)
         return rows.first
+    }
+
+    // MARK: - Read: Polls by Session
+
+    static func fetchPollsCreatedBy(sessionId: String) async throws -> [PollRow] {
+        let request = try makeGetRequest(path: "/polls", queryItems: [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "creator_session_id", value: "eq.\(sessionId)"),
+            URLQueryItem(name: "order", value: "created_at.desc")
+        ])
+        return try await executeGet(request)
+    }
+
+    static func fetchPollsRespondedToBy(sessionId: String) async throws -> [PollRow] {
+        // First get poll IDs from responses
+        let responsesRequest = try makeGetRequest(path: "/responses", queryItems: [
+            URLQueryItem(name: "select", value: "poll_id"),
+            URLQueryItem(name: "session_id", value: "eq.\(sessionId)")
+        ])
+
+        struct PollIdRow: Decodable {
+            let pollId: String
+        }
+
+        let responses: [PollIdRow] = try await executeGet(responsesRequest)
+        let pollIds = Array(Set(responses.map { $0.pollId }))
+
+        guard !pollIds.isEmpty else { return [] }
+
+        // Fetch the polls
+        let pollIdsString = pollIds.joined(separator: ",")
+        let pollsRequest = try makeGetRequest(path: "/polls", queryItems: [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "id", value: "in.(\(pollIdsString))"),
+            URLQueryItem(name: "order", value: "created_at.desc")
+        ])
+        return try await executeGet(pollsRequest)
     }
 
     // MARK: - Read: Time Slots
@@ -291,5 +344,65 @@ enum SupabaseAPI {
             URLQueryItem(name: "poll_id", value: "eq.\(pollId)")
         ])
         return try await executeGet(request)
+    }
+
+    // MARK: - Read: Response Count for Poll
+
+    static func fetchResponseCount(pollId: String) async throws -> Int {
+        let request = try makeGetRequest(path: "/participants", queryItems: [
+            URLQueryItem(name: "select", value: "session_id"),
+            URLQueryItem(name: "poll_id", value: "eq.\(pollId)")
+        ])
+        let participants: [ParticipantRow] = try await executeGet(request)
+        return participants.count
+    }
+
+    // MARK: - Write: Finalize Poll
+
+    static func finalizePoll(pollId: String, slotId: String) async throws {
+        guard var components = URLComponents(string: "\(baseURL)/polls") else {
+            throw APIError.invalidURL
+        }
+        components.queryItems = [URLQueryItem(name: "id", value: "eq.\(pollId)")]
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+
+        // Use "finalized" status - matches database CHECK constraint
+        let body: [String: Any] = [
+            "status": "finalized",
+            "finalized_slot_id": slotId
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw APIError.networkError(error)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.httpError(statusCode: 0, body: "Not an HTTP response")
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            // Parse error message for better display
+            var errorMessage = "Unknown error"
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let message = json["message"] as? String {
+                errorMessage = message
+            } else if let bodyStr = String(data: data, encoding: .utf8) {
+                errorMessage = bodyStr
+            }
+            throw APIError.httpError(statusCode: httpResponse.statusCode, body: errorMessage)
+        }
     }
 }
