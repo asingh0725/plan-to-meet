@@ -8,12 +8,13 @@ const projectRoot = join(__dirname, '..');
 const publicDir = join(projectRoot, 'public');
 const iosAppIconDir = join(projectRoot, '..', 'ios', 'PlanToMeet', 'Images.xcassets', 'AppIcon.appiconset');
 const iosMessageIconDir = join(projectRoot, '..', 'ios', 'PlanToMeetMessages', 'Assets.xcassets', 'iMessage App Icon.stickersiconset');
+const baseIconPath = join(projectRoot, '..', 'ios', 'app-icon.png');
 
-// Read the base SVG
-const svgBuffer = readFileSync(join(publicDir, 'icon-base.svg'));
+// Read the base icon PNG
+const baseIconBuffer = readFileSync(baseIconPath);
 
 async function generateIcon(outputPath, width, height = width) {
-  await sharp(svgBuffer)
+  await sharp(baseIconBuffer)
     .resize(width, height, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
     .toFile(outputPath);
@@ -56,7 +57,7 @@ async function generateOGImage() {
 
   // Create icon for OG image (smaller)
   const iconSize = 200;
-  const iconBuffer = await sharp(svgBuffer)
+  const iconBuffer = await sharp(baseIconBuffer)
     .resize(iconSize, iconSize)
     .png()
     .toBuffer();
