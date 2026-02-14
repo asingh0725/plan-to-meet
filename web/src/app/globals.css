@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #FAFAF9;
-  --foreground: #1C1917;
+  --background: #05070C;
+  --foreground: #E6ECF5;
 }
 
 * {
@@ -42,23 +42,23 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D6D3D1;
+  background: #1F2A3D;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #A8A29E;
+  background: #2B3A52;
 }
 
 /* Selection */
 ::selection {
-  background: rgba(59, 130, 246, 0.2);
-  color: #1C1917;
+  background: rgba(126, 166, 255, 0.25);
+  color: #E6ECF5;
 }
 
 /* Focus styles */
 :focus-visible {
-  outline: 2px solid #3B82F6;
+  outline: 2px solid #7EA6FF;
   outline-offset: 2px;
 }
 
@@ -151,29 +151,29 @@ button, a {
 
 /* ===== GLASSMORPHISM ===== */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(12, 16, 26, 0.55);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(148, 163, 184, 0.16);
 }
 
 .glass-dark {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(5, 8, 14, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(148, 163, 184, 0.12);
 }
 
 /* ===== GRADIENT TEXT ===== */
 .gradient-text {
-  background: linear-gradient(135deg, #fff 0%, #a5b4fc 50%, #818cf8 100%);
+  background: linear-gradient(135deg, #F8FAFF 0%, #B7CCFF 50%, #7EA6FF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .gradient-text-warm {
-  background: linear-gradient(135deg, #fff 0%, #fcd34d 50%, #f59e0b 100%);
+  background: linear-gradient(135deg, #F8FAFF 0%, #9CCBFF 50%, #7FE7FF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -181,11 +181,11 @@ button, a {
 
 /* ===== GLOW EFFECTS ===== */
 .glow-purple {
-  box-shadow: 0 0 60px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 0 60px rgba(126, 166, 255, 0.35);
 }
 
 .glow-blue {
-  box-shadow: 0 0 60px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 60px rgba(126, 166, 255, 0.35);
 }
 
 /* ===== LOGO CLOUD ANIMATION ===== */
@@ -195,6 +195,78 @@ button, a {
   }
   100% {
     transform: translateX(-50%);
+  }
+}
+
+@layer utilities {
+  .bg-auth-grid {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    background-size: 120px 120px;
+  }
+
+  .bg-auth-stars {
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, rgba(226, 232, 240, 0.7), transparent 55%),
+      radial-gradient(1px 1px at 70% 22%, rgba(226, 232, 240, 0.55), transparent 60%),
+      radial-gradient(1px 1px at 32% 76%, rgba(226, 232, 240, 0.5), transparent 55%),
+      radial-gradient(1px 1px at 82% 68%, rgba(226, 232, 240, 0.45), transparent 60%),
+      radial-gradient(1px 1px at 52% 40%, rgba(226, 232, 240, 0.35), transparent 60%);
+  }
+
+  .bg-auth-radial {
+    background-image:
+      radial-gradient(circle at 50% 10%, rgba(126, 166, 255, 0.35), transparent 55%),
+      radial-gradient(circle at 10% 70%, rgba(127, 231, 255, 0.25), transparent 55%),
+      radial-gradient(circle at 85% 80%, rgba(139, 124, 255, 0.2), transparent 55%);
+  }
+
+  .bg-auth-noise {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/></filter><rect width='180' height='180' filter='url(%23n)' opacity='0.45'/></svg>");
+    background-size: 180px 180px;
+  }
+
+  .bg-auth-vignette {
+    background-image:
+      radial-gradient(circle at center, rgba(5, 7, 12, 0) 0%, rgba(5, 7, 12, 0.4) 55%, rgba(5, 7, 12, 0.9) 100%);
+  }
+
+  .bg-auth-circuit {
+    background-image:
+      radial-gradient(circle at 15% 30%, rgba(126, 166, 255, 0.18), transparent 35%),
+      radial-gradient(circle at 80% 25%, rgba(127, 231, 255, 0.12), transparent 40%),
+      radial-gradient(circle at 20% 80%, rgba(139, 124, 255, 0.12), transparent 35%),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+      linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+    background-size: 200px 200px, 240px 240px, 240px 240px, 80px 80px, 80px 80px;
+  }
+
+  .text-auth-glow {
+    text-shadow: 0 0 18px rgba(126, 166, 255, 0.25), 0 0 46px rgba(126, 166, 255, 0.18);
+  }
+
+  .text-auth-soft {
+    text-shadow: 0 0 12px rgba(226, 232, 240, 0.15);
+  }
+
+  .bg-auth-grid-fine {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
+    background-size: 70px 70px;
+  }
+
+  .bg-auth-circuit-dense {
+    background-image:
+      radial-gradient(circle at 12% 22%, rgba(126, 166, 255, 0.12), transparent 35%),
+      radial-gradient(circle at 72% 18%, rgba(127, 231, 255, 0.1), transparent 40%),
+      radial-gradient(circle at 28% 78%, rgba(139, 124, 255, 0.1), transparent 35%),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(126, 166, 255, 0.08) 1px, transparent 1px),
+      linear-gradient(rgba(126, 166, 255, 0.08) 1px, transparent 1px);
+    background-size: 220px 220px, 260px 260px, 260px 260px, 110px 110px, 110px 110px, 32px 32px, 32px 32px;
   }
 }
 
@@ -216,6 +288,97 @@ button, a {
 
 .animate-pulse-glow {
   animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes circuit-flow {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    stroke-dashoffset: -240;
+    opacity: 0.4;
+  }
+}
+
+@keyframes circuit-flow-slow {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    stroke-dashoffset: -320;
+    opacity: 0.35;
+  }
+}
+
+@keyframes circuit-pulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.2);
+  }
+}
+
+.circuit-flow {
+  stroke-dasharray: 14 14;
+  animation: circuit-flow 6s linear infinite;
+}
+
+.circuit-flow-slow {
+  stroke-dasharray: 18 18;
+  animation: circuit-flow-slow 10s linear infinite;
+}
+
+.circuit-dot {
+  animation: circuit-pulse 3.2s ease-in-out infinite;
+}
+
+@keyframes hero-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.hero-shimmer {
+  background-size: 240% 240%;
+  animation: hero-shimmer 12s ease-in-out infinite;
+}
+
+@keyframes edge-shine {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0.08;
+  }
+  50% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0.08;
+  }
+}
+
+.edge-shine {
+  background: conic-gradient(from 120deg, transparent 0deg, rgba(255, 255, 255, 0.35) 90deg, transparent 160deg, transparent 360deg);
+  animation: edge-shine 7s linear infinite;
+  mix-blend-mode: screen;
+  opacity: 0.22;
 }
 
 /* ===== FLOATING ANIMATION ===== */

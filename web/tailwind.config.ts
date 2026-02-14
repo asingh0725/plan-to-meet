@@ -9,18 +9,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Light theme - warm and human
-        background: '#FAFAF9',
-        'background-secondary': '#F5F5F4',
-        surface: '#FFFFFF',
-        'surface-secondary': '#F9FAFB',
-        border: '#E7E5E4',
-        'border-light': '#D6D3D1',
+        // Dark, cinematic theme
+        background: '#05070C',
+        'background-secondary': '#0B0F17',
+        surface: '#111827',
+        'surface-secondary': '#0F1522',
+        border: '#1F2937',
+        'border-light': '#2B3446',
 
         // Text hierarchy
-        'text-primary': '#1C1917',
-        'text-secondary': '#57534E',
-        'text-tertiary': '#A8A29E',
+        'text-primary': '#F4F7FF',
+        'text-secondary': '#B9C6DD',
+        'text-tertiary': '#7C8AA5',
+
+        // Accent colors
+        accent: {
+          blue: '#7EA6FF',
+          ice: '#C7D7FF',
+          cyan: '#7FE7FF',
+          violet: '#8B7CFF',
+          teal: '#44D7B6',
+          green: '#22C55E',
+          orange: '#F59E0B',
+          red: '#F87171',
+        },
 
         // Brand colors (from app)
         brand: {
@@ -58,10 +70,10 @@ const config: Config = {
         },
       },
       boxShadow: {
-        'soft': '0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 4px 16px -4px rgba(0, 0, 0, 0.08)',
-        'medium': '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.12)',
-        'elevated': '0 8px 24px -4px rgba(0, 0, 0, 0.1), 0 16px 48px -8px rgba(0, 0, 0, 0.15)',
-        'phone': '0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 12px 24px -8px rgba(0, 0, 0, 0.1)',
+        'soft': '0 12px 40px -24px rgba(2, 6, 23, 0.7), 0 4px 12px -6px rgba(2, 6, 23, 0.5)',
+        'medium': '0 20px 60px -36px rgba(2, 6, 23, 0.8), 0 8px 20px -10px rgba(2, 6, 23, 0.6)',
+        'elevated': '0 30px 80px -48px rgba(2, 6, 23, 0.85), 0 12px 32px -12px rgba(2, 6, 23, 0.7)',
+        'phone': '0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 12px 24px -8px rgba(0, 0, 0, 0.3)',
       },
     },
   },
