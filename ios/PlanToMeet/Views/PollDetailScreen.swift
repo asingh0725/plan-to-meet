@@ -30,7 +30,7 @@ struct PollDetailScreen: View {
 
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            AuthKitBackground()
 
             if viewModel.isLoading {
                 loadingView
@@ -132,9 +132,10 @@ struct PollDetailScreen: View {
                     .padding(.top, 4)
                 }
             }
+            .padding(16)
+            .cardStyle()
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Theme.cardBackground)
+            .padding(.top, 16)
 
             // Read-only banner
             if isReadOnly {

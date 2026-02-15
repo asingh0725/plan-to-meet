@@ -11,18 +11,30 @@ ALTER TABLE participants ENABLE ROW LEVEL SECURITY;
 -- Polls: readable by anyone
 CREATE POLICY "polls_select_all" ON polls
   FOR SELECT
-  USING (true);
+  USING (archived_at IS NULL);
 
 -- Polls: only creator can finalize
 CREATE POLICY "polls_finalize_creator" ON polls
   FOR UPDATE
-  USING (creator_session_id = (current_setting('request.jwt.claims', true)::jsonb ->> 'session_id'))
-  WITH CHECK (creator_session_id = (current_setting('request.jwt.claims', true)::jsonb ->> 'session_id'));
+  USING (
+    archived_at IS NULL
+    AND creator_session_id = (current_setting('request.jwt.claims', true)::jsonb ->> 'session_id')
+  )
+  WITH CHECK (
+    archived_at IS NULL
+    AND creator_session_id = (current_setting('request.jwt.claims', true)::jsonb ->> 'session_id')
+  );
 
 -- Slots: readable by anyone, immutable after creation/finalization
 CREATE POLICY "time_slots_select_all" ON time_slots
   FOR SELECT
-  USING (true);
+  USING (
+    EXISTS (
+      SELECT 1 FROM polls
+      WHERE polls.id = time_slots.poll_id
+      AND polls.archived_at IS NULL
+    )
+  );
 
 CREATE POLICY "time_slots_insert_open" ON time_slots
   FOR INSERT
@@ -31,6 +43,7 @@ CREATE POLICY "time_slots_insert_open" ON time_slots
       SELECT 1 FROM polls
       WHERE polls.id = time_slots.poll_id
       AND polls.status = 'open'
+      AND polls.archived_at IS NULL
     )
   );
 
@@ -45,7 +58,13 @@ CREATE POLICY "time_slots_no_delete" ON time_slots
 -- Availability blocks: readable by anyone, immutable after slots exist or poll finalized
 CREATE POLICY "availability_select_all" ON availability_blocks
   FOR SELECT
-  USING (true);
+  USING (
+    EXISTS (
+      SELECT 1 FROM polls
+      WHERE polls.id = availability_blocks.poll_id
+      AND polls.archived_at IS NULL
+    )
+  );
 
 CREATE POLICY "availability_insert_open" ON availability_blocks
   FOR INSERT
@@ -54,6 +73,7 @@ CREATE POLICY "availability_insert_open" ON availability_blocks
       SELECT 1 FROM polls
       WHERE polls.id = availability_blocks.poll_id
       AND polls.status = 'open'
+      AND polls.archived_at IS NULL
     )
     AND NOT EXISTS (
       SELECT 1 FROM time_slots
@@ -72,11 +92,24 @@ CREATE POLICY "availability_no_delete" ON availability_blocks
 -- Responses: readable by anyone, insert once per poll/session
 CREATE POLICY "responses_select_all" ON responses
   FOR SELECT
-  USING (true);
+  USING (
+    EXISTS (
+      SELECT 1 FROM polls
+      WHERE polls.id = responses.poll_id
+      AND polls.archived_at IS NULL
+    )
+  );
 
 CREATE POLICY "responses_insert_once" ON responses
   FOR INSERT
   WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM polls
+      WHERE polls.id = responses.poll_id
+      AND polls.status = 'open'
+      AND polls.archived_at IS NULL
+    )
+    AND
     NOT EXISTS (
       SELECT 1 FROM responses r
       WHERE r.poll_id = responses.poll_id
@@ -88,13 +121,42 @@ CREATE POLICY "responses_insert_once" ON responses
 -- Participants: readable by anyone, upsert per poll/session
 CREATE POLICY "participants_select_all" ON participants
   FOR SELECT
-  USING (true);
+  USING (
+    EXISTS (
+      SELECT 1 FROM polls
+      WHERE polls.id = participants.poll_id
+      AND polls.archived_at IS NULL
+    )
+  );
 
 CREATE POLICY "participants_insert" ON participants
   FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM polls
+      WHERE polls.id = participants.poll_id
+      AND polls.status = 'open'
+      AND polls.archived_at IS NULL
+    )
+  );
 
 CREATE POLICY "participants_update_self" ON participants
   FOR UPDATE
-  USING (session_id = (current_setting('request.jwt.claims', true)::jsonb ->> 'session_id'))
-  WITH CHECK (session_id = (current_setting('request.jwt.claims', true)::jsonb ->> 'session_id'));
+  USING (
+    session_id = (current_setting('request.jwt.claims', true)::jsonb ->> 'session_id')
+    AND EXISTS (
+      SELECT 1 FROM polls
+      WHERE polls.id = participants.poll_id
+      AND polls.status = 'open'
+      AND polls.archived_at IS NULL
+    )
+  )
+  WITH CHECK (
+    session_id = (current_setting('request.jwt.claims', true)::jsonb ->> 'session_id')
+    AND EXISTS (
+      SELECT 1 FROM polls
+      WHERE polls.id = participants.poll_id
+      AND polls.status = 'open'
+      AND polls.archived_at IS NULL
+    )
+  );

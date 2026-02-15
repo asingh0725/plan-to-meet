@@ -246,11 +246,13 @@ final class MessagesViewController: MSMessagesAppViewController {
             layout.subcaption = info.subtitle ?? "Tap to vote"
             layout.trailingCaption = nil
             layout.trailingSubcaption = nil
+            layout.image = renderPollCardImage(info)
         } else {
             layout.caption = "PlanToMeet Poll"
             layout.subcaption = "Tap to vote"
             layout.trailingCaption = nil
             layout.trailingSubcaption = nil
+            layout.image = renderPollCardImage(nil)
         }
     }
 
@@ -260,6 +262,130 @@ final class MessagesViewController: MSMessagesAppViewController {
         layout.subcaption = "Tap to add to calendar"
         layout.trailingCaption = nil
         layout.trailingSubcaption = nil
+        layout.image = renderFinalizedCardImage(info)
+    }
+
+    private func renderPollCardImage(_ info: PollMessageInfo?) -> UIImage? {
+        let size = CGSize(width: 900, height: 520)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 3
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+
+        return renderer.image { ctx in
+            let rect = CGRect(origin: .zero, size: size)
+            let context = ctx.cgContext
+
+            let backgroundColors = [
+                UIColor(red: 0.04, green: 0.05, blue: 0.09, alpha: 1).cgColor,
+                UIColor(red: 0.02, green: 0.03, blue: 0.06, alpha: 1).cgColor
+            ]
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: backgroundColors as CFArray, locations: [0, 1]) {
+                context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 0, y: rect.maxY), options: [])
+            }
+
+            context.setStrokeColor(UIColor.white.withAlphaComponent(0.04).cgColor)
+            context.setLineWidth(1)
+            let gridSpacing: CGFloat = 80
+            stride(from: 0, through: rect.maxX, by: gridSpacing).forEach { x in
+                context.move(to: CGPoint(x: x, y: 0))
+                context.addLine(to: CGPoint(x: x, y: rect.maxY))
+            }
+            stride(from: 0, through: rect.maxY, by: gridSpacing).forEach { y in
+                context.move(to: CGPoint(x: 0, y: y))
+                context.addLine(to: CGPoint(x: rect.maxX, y: y))
+            }
+            context.strokePath()
+
+            let cardRect = rect.insetBy(dx: 70, dy: 90)
+            let cardPath = UIBezierPath(roundedRect: cardRect, cornerRadius: 44)
+            context.setFillColor(UIColor(red: 0.08, green: 0.1, blue: 0.16, alpha: 0.9).cgColor)
+            context.addPath(cardPath.cgPath)
+            context.fillPath()
+
+            context.setStrokeColor(UIColor.white.withAlphaComponent(0.18).cgColor)
+            context.setLineWidth(2)
+            context.addPath(cardPath.cgPath)
+            context.strokePath()
+
+            let innerPath = UIBezierPath(roundedRect: cardRect.insetBy(dx: 2, dy: 2), cornerRadius: 42)
+            context.setStrokeColor(UIColor.white.withAlphaComponent(0.08).cgColor)
+            context.setLineWidth(1)
+            context.addPath(innerPath.cgPath)
+            context.strokePath()
+
+            let orbRect = CGRect(x: cardRect.maxX - 70, y: cardRect.minY + 28, width: 36, height: 36)
+            context.setFillColor(UIColor(red: 0.55, green: 0.64, blue: 1, alpha: 0.6).cgColor)
+            context.fillEllipse(in: orbRect)
+
+            let rawTitle = info?.title ?? ""
+            let titleText = rawTitle.isEmpty ? "PlanToMeet Poll" : rawTitle
+            let subtitleText = info?.subtitle ?? "Tap to vote"
+            let dateText = info?.dateRange ?? ""
+
+            let titleAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 36, weight: .semibold),
+                .foregroundColor: UIColor.white
+            ]
+            let subtitleAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 22, weight: .regular),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.7)
+            ]
+            let dateAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 20, weight: .medium),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.5)
+            ]
+
+            let titlePoint = CGPoint(x: cardRect.minX + 32, y: cardRect.minY + 70)
+            titleText.draw(at: titlePoint, withAttributes: titleAttributes)
+
+            let subtitlePoint = CGPoint(x: cardRect.minX + 32, y: cardRect.minY + 120)
+            subtitleText.draw(at: subtitlePoint, withAttributes: subtitleAttributes)
+
+            if !dateText.isEmpty {
+                let datePoint = CGPoint(x: cardRect.minX + 32, y: cardRect.minY + 160)
+                dateText.draw(at: datePoint, withAttributes: dateAttributes)
+            }
+        }
+    }
+
+    private func renderFinalizedCardImage(_ info: FinalizedPollInfo) -> UIImage? {
+        let size = CGSize(width: 900, height: 520)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 3
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+
+        return renderer.image { ctx in
+            let rect = CGRect(origin: .zero, size: size)
+            let context = ctx.cgContext
+            context.setFillColor(UIColor(red: 0.04, green: 0.05, blue: 0.09, alpha: 1).cgColor)
+            context.fill(rect)
+
+            let cardRect = rect.insetBy(dx: 70, dy: 120)
+            let cardPath = UIBezierPath(roundedRect: cardRect, cornerRadius: 40)
+            context.setFillColor(UIColor(red: 0.08, green: 0.12, blue: 0.1, alpha: 0.9).cgColor)
+            context.addPath(cardPath.cgPath)
+            context.fillPath()
+            context.setStrokeColor(UIColor.white.withAlphaComponent(0.16).cgColor)
+            context.setLineWidth(2)
+            context.addPath(cardPath.cgPath)
+            context.strokePath()
+
+            let title = info.title.isEmpty ? "Event Scheduled" : info.title
+            let caption = "\(info.formattedShortDate)"
+            let titleAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 34, weight: .semibold),
+                .foregroundColor: UIColor.white
+            ]
+            let subtitleAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 22, weight: .regular),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.7)
+            ]
+
+            title.draw(at: CGPoint(x: cardRect.minX + 32, y: cardRect.minY + 70), withAttributes: titleAttributes)
+            caption.draw(at: CGPoint(x: cardRect.minX + 32, y: cardRect.minY + 120), withAttributes: subtitleAttributes)
+        }
     }
 
 }

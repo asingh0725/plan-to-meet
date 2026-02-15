@@ -27,7 +27,7 @@ export default function PrivacyPolicy() {
         <div className="rounded-[32px] border border-white/10 bg-white/[0.04] p-6 shadow-[0_30px_90px_-60px_rgba(6,10,24,1)] md:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#87a6e6]">PlanToMeet</p>
           <h1 className="mt-3 text-[clamp(2rem,4vw,3rem)] font-semibold tracking-tight text-white">Privacy Policy</h1>
-          <p className="mt-2 text-sm text-[#90a0c5]">Last updated: February 6, 2026</p>
+          <p className="mt-2 text-sm text-[#90a0c5]">Last updated: February 15, 2026</p>
 
           <div className="mt-8 space-y-8 text-sm leading-relaxed text-[#b9c5df]">
             <section>
@@ -73,7 +73,10 @@ export default function PrivacyPolicy() {
               <h2 className="text-lg font-semibold text-white">Data Storage</h2>
               <p className="mt-2">
                 Poll data is stored securely using Supabase. Data is encrypted in transit and at rest.
-                We retain poll data unless you request deletion.
+                We retain finalized polls until 14 days after the finalized meeting date, and open polls
+                until 7 days after the end of the date range. After retention, we delete responses, time
+                slots, participants, and availability blocks, and keep a minimal non-user-facing metadata
+                stub for audit and analytics.
               </p>
             </section>
 

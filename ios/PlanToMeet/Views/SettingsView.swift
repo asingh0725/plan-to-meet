@@ -9,7 +9,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Theme.background.ignoresSafeArea()
+                AuthKitBackground()
 
                 ScrollView {
                     VStack(spacing: 24) {

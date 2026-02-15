@@ -70,7 +70,7 @@ struct WaitingForPollView: View {
                 .foregroundColor(Theme.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.background.ignoresSafeArea())
+        .background(AuthKitBackground())
     }
 }
 
@@ -143,7 +143,7 @@ struct DebugPollEntryView: View {
                 .padding(.bottom, 20)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.background.ignoresSafeArea())
+        .background(AuthKitBackground())
     }
 }
 #endif
