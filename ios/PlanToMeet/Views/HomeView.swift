@@ -9,7 +9,7 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Theme.background.ignoresSafeArea()
+                AuthKitBackground()
 
                 ScrollView {
                     VStack(spacing: 20) {
@@ -79,11 +79,10 @@ struct HomeView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
-        .background(Theme.cardBackground)
-        .cornerRadius(Theme.cornerRadiusLarge)
+        .cardStyle()
         .overlay(
-            RoundedRectangle(cornerRadius: Theme.cornerRadiusLarge)
-                .stroke(Color.green.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.cornerRadiusMedium)
+                .stroke(Theme.accentBlue.opacity(0.35), lineWidth: 1)
         )
     }
 
@@ -287,12 +286,7 @@ struct PollCard: View {
                 }
             }
             .padding(16)
-            .background(Theme.cardBackground)
-            .cornerRadius(Theme.cornerRadiusMedium)
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.cornerRadiusMedium)
-                    .stroke(Theme.border, lineWidth: 1)
-            )
+            .cardStyle()
         }
         .buttonStyle(.plain)
     }

@@ -18,6 +18,7 @@ export async function fetchPoll(pollId: string): Promise<Poll | null> {
       params: {
         select: '*',
         id: `eq.${pollId}`,
+        archived_at: 'is.null',
         limit: '1',
       },
     })
@@ -74,6 +75,7 @@ export async function fetchPollBasic(pollId: string): Promise<Omit<Poll, 'timeSl
       params: {
         select: '*',
         id: `eq.${pollId}`,
+        archived_at: 'is.null',
         limit: '1',
       },
     })

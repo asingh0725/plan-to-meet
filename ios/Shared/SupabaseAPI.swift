@@ -272,6 +272,7 @@ enum SupabaseAPI {
         let request = try makeGetRequest(path: "/polls", queryItems: [
             URLQueryItem(name: "select", value: "*"),
             URLQueryItem(name: "id", value: "eq.\(id)"),
+            URLQueryItem(name: "archived_at", value: "is.null"),
             URLQueryItem(name: "limit", value: "1")
         ])
         let rows: [PollRow] = try await executeGet(request)
@@ -284,6 +285,7 @@ enum SupabaseAPI {
         let request = try makeGetRequest(path: "/polls", queryItems: [
             URLQueryItem(name: "select", value: "*"),
             URLQueryItem(name: "creator_session_id", value: "eq.\(sessionId)"),
+            URLQueryItem(name: "archived_at", value: "is.null"),
             URLQueryItem(name: "order", value: "created_at.desc")
         ])
         return try await executeGet(request)
@@ -310,6 +312,7 @@ enum SupabaseAPI {
         let pollsRequest = try makeGetRequest(path: "/polls", queryItems: [
             URLQueryItem(name: "select", value: "*"),
             URLQueryItem(name: "id", value: "in.(\(pollIdsString))"),
+            URLQueryItem(name: "archived_at", value: "is.null"),
             URLQueryItem(name: "order", value: "created_at.desc")
         ])
         return try await executeGet(pollsRequest)

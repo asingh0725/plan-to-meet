@@ -202,17 +202,19 @@ struct AppClipPollView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if viewModel.isLoading {
-                loadingView
-            } else if let error = viewModel.errorMessage, viewModel.poll == nil {
-                errorView(error)
-            } else if let poll = viewModel.poll {
-                pollContent(poll)
+        ZStack {
+            AuthKitBackground()
+            VStack(spacing: 0) {
+                if viewModel.isLoading {
+                    loadingView
+                } else if let error = viewModel.errorMessage, viewModel.poll == nil {
+                    errorView(error)
+                } else if let poll = viewModel.poll {
+                    pollContent(poll)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.background.ignoresSafeArea())
         .onAppear { viewModel.loadPoll() }
         .sheet(isPresented: $showCalendarSheet) {
             if let info = viewModel.finalizedPollInfo {
@@ -328,7 +330,10 @@ struct AppClipPollView: View {
             Spacer()
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
+        .cardStyle()
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
     }
 
     @ViewBuilder
@@ -389,6 +394,8 @@ struct AppClipPollView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .cardStyle()
+        .padding(.horizontal, 16)
     }
 
     private var instructionText: some View {
@@ -493,7 +500,7 @@ struct AppClipPollView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(isFinalized ? Theme.accentGreen.opacity(0.1) : backgroundForResponse(myResponse))
+            .background(isFinalized ? Theme.accentGreen.opacity(0.12) : backgroundForResponse(myResponse))
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -597,12 +604,7 @@ struct AppClipPollView: View {
             }
         }
         .padding(16)
-        .background(Theme.cardBackground)
-        .cornerRadius(12)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Theme.border, lineWidth: 1)
-        )
+        .cardStyle()
     }
 
     // MARK: - Formatting

@@ -3,36 +3,36 @@ import SwiftUI
 /// Shared color theme matching the iMessage extension and Expo app styles
 enum Theme {
     // MARK: - Background Colors
-    static let background = Color(red: 0.035, green: 0.035, blue: 0.043)
-    static let cardBackground = Color(red: 0.063, green: 0.063, blue: 0.075)
-    static let elevatedBackground = Color(red: 0.1, green: 0.1, blue: 0.12)
+    static let background = Color(red: 0.02, green: 0.03, blue: 0.06)
+    static let cardBackground = Color.white.opacity(0.06)
+    static let elevatedBackground = Color(red: 0.08, green: 0.1, blue: 0.16)
 
     // MARK: - Border Colors
-    static let border = Color(red: 0.15, green: 0.15, blue: 0.17)
-    static let borderLight = Color(red: 0.2, green: 0.2, blue: 0.24)
+    static let border = Color.white.opacity(0.15)
+    static let borderLight = Color.white.opacity(0.25)
 
     // MARK: - Text Colors
-    static let textPrimary = Color.white
-    static let textSecondary = Color(red: 0.63, green: 0.63, blue: 0.67)
-    static let textTertiary = Color(red: 0.4, green: 0.4, blue: 0.45)
-    static let textDisabled = Color(red: 0.44, green: 0.44, blue: 0.48)
+    static let textPrimary = Color(red: 0.97, green: 0.98, blue: 1.0)
+    static let textSecondary = Color(red: 0.73, green: 0.78, blue: 0.86)
+    static let textTertiary = Color(red: 0.52, green: 0.58, blue: 0.7)
+    static let textDisabled = Color(red: 0.44, green: 0.48, blue: 0.58)
 
     // MARK: - Accent Colors
-    static let accentBlue = Color(red: 0.23, green: 0.51, blue: 0.96)
-    static let accentBlueDark = Color(red: 0.15, green: 0.40, blue: 0.85)
+    static let accentBlue = Color(red: 0.49, green: 0.64, blue: 1.0)
+    static let accentBlueDark = Color(red: 0.33, green: 0.5, blue: 0.95)
     static let accentGreen = Color.green
     static let accentOrange = Color.orange
     static let accentRed = Color.red
 
     // MARK: - Button Colors
-    static let buttonDisabledBackground = Color(red: 0.15, green: 0.15, blue: 0.18)
-    static let buttonDisabledForeground = Color(red: 0.44, green: 0.44, blue: 0.48)
+    static let buttonDisabledBackground = Color.white.opacity(0.08)
+    static let buttonDisabledForeground = Color(red: 0.6, green: 0.65, blue: 0.74)
 
     // MARK: - Gradients
     static let blueGradient = LinearGradient(
         colors: [
-            Color(red: 59/255, green: 130/255, blue: 246/255),
-            Color(red: 37/255, green: 99/255, blue: 235/255)
+            Color(red: 0.49, green: 0.64, blue: 1.0),
+            Color(red: 0.37, green: 0.53, blue: 0.95)
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -57,12 +57,38 @@ enum Theme {
 extension View {
     func cardStyle() -> some View {
         self
-            .background(Theme.cardBackground)
+            .background(
+                ZStack {
+                    Theme.cardBackground
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.16), Color.white.opacity(0.06), Color.clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            )
             .cornerRadius(Theme.cornerRadiusMedium)
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.cornerRadiusMedium)
-                    .stroke(Theme.border, lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.25),
+                                Color.white.opacity(0.12),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.cornerRadiusMedium - 2)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .padding(1)
+            )
+            .shadow(color: Color.black.opacity(0.45), radius: 20, x: 0, y: 12)
     }
 
     func primaryButtonStyle(isEnabled: Bool = true) -> some View {
@@ -83,5 +109,55 @@ extension View {
             .padding(.vertical, 10)
             .background(Theme.accentBlue.opacity(0.1))
             .cornerRadius(Theme.cornerRadiusSmall)
+    }
+}
+
+struct AuthKitBackground: View {
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.02, green: 0.03, blue: 0.06),
+                        Color(red: 0.03, green: 0.05, blue: 0.09)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                RadialGradient(
+                    colors: [
+                        Color(red: 0.35, green: 0.45, blue: 1.0, opacity: 0.22),
+                        Color.clear
+                    ],
+                    center: .top,
+                    startRadius: 0,
+                    endRadius: size.width * 0.6
+                )
+                Canvas { context, _ in
+                    var gridPath = Path()
+                    let spacing: CGFloat = 80
+                    stride(from: 0, through: size.width, by: spacing).forEach { x in
+                        gridPath.move(to: CGPoint(x: x, y: 0))
+                        gridPath.addLine(to: CGPoint(x: x, y: size.height))
+                    }
+                    stride(from: 0, through: size.height, by: spacing).forEach { y in
+                        gridPath.move(to: CGPoint(x: 0, y: y))
+                        gridPath.addLine(to: CGPoint(x: size.width, y: y))
+                    }
+                    context.stroke(gridPath, with: .color(Color.white.opacity(0.05)), lineWidth: 1)
+
+                    var dotPath = Path()
+                    let dotSpacing: CGFloat = 140
+                    stride(from: 20, through: size.width, by: dotSpacing).forEach { x in
+                        stride(from: 30, through: size.height, by: dotSpacing).forEach { y in
+                            dotPath.addEllipse(in: CGRect(x: x, y: y, width: 2, height: 2))
+                        }
+                    }
+                    context.fill(dotPath, with: .color(Color.white.opacity(0.12)))
+                }
+            }
+            .ignoresSafeArea()
+        }
     }
 }
