@@ -1,11 +1,11 @@
 {
   "name": "PlanToMeet",
   "short_name": "PlanToMeet",
-  "description": "Find the perfect time to meet. Create scheduling polls and share with friends.",
+  "description": "Find the perfect time to meet. Create scheduling polls and share with friends — no sign-up required.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#09090b",
-  "theme_color": "#09090b",
+  "background_color": "#05070C",
+  "theme_color": "#05070C",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -22,7 +22,29 @@
     }
   ],
   "categories": ["productivity", "utilities"],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/screenshots/poll-voting.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Vote on time slots — tap Yes, Maybe, or No"
+    },
+    {
+      "src": "/screenshots/poll-results.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Best time chosen automatically from votes"
+    },
+    {
+      "src": "/screenshots/create-poll.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Create a poll in seconds — no account needed"
+    }
+  ],
   "prefer_related_applications": true,
   "related_applications": [
     {
