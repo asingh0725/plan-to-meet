@@ -287,6 +287,7 @@ struct PollDetailScreen: View {
                 slotContent(slot: slot, myResponse: myResponse, yesCount: yesCount, maybeCount: maybeCount, isBestSlot: isBestSlot)
             } else {
                 // Interactive: allow voting
+                let currentVote = myResponse ?? "no vote"
                 Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     viewModel.toggleResponse(slotId: slot.id)
@@ -294,6 +295,9 @@ struct PollDetailScreen: View {
                     slotContent(slot: slot, myResponse: myResponse, yesCount: yesCount, maybeCount: maybeCount, isBestSlot: isBestSlot)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(formatDateHeader(slot.day)), \(formatTime(slot.startTime)) to \(formatTime(slot.endTime))")
+                .accessibilityHint("Double-tap to cycle your vote. Current: \(currentVote)")
+                .accessibilityValue(currentVote)
             }
         }
     }

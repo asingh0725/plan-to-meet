@@ -28,6 +28,7 @@ export const TimeSlotCard = memo(function TimeSlotCard({
   disabled,
 }: TimeSlotCardProps) {
   const stats = getSlotStats(responses, slot.id)
+  const slotLabel = `${formatSlotDate(slot)} at ${formatSlotTime(slot)}`
 
   const handleVote = (availability: Availability) => {
     if (!disabled && !isFinalized) {
@@ -39,6 +40,8 @@ export const TimeSlotCard = memo(function TimeSlotCard({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      role="group"
+      aria-label={`Time slot: ${slotLabel}${isSelected ? ', finalized' : ''}`}
       className={cn(
         'bg-card border rounded-2xl p-4 transition-all',
         isSelected
@@ -92,24 +95,27 @@ export const TimeSlotCard = memo(function TimeSlotCard({
 
       {/* Vote Buttons */}
       {!isFinalized && (
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="group" aria-label={`Vote for ${slotLabel}`}>
           <VoteButton
             type="available"
             isActive={userResponse === 'available'}
             onClick={() => handleVote('available')}
             disabled={disabled}
+            slotLabel={slotLabel}
           />
           <VoteButton
             type="maybe"
             isActive={userResponse === 'maybe'}
             onClick={() => handleVote('maybe')}
             disabled={disabled}
+            slotLabel={slotLabel}
           />
           <VoteButton
             type="unavailable"
             isActive={userResponse === 'unavailable'}
             onClick={() => handleVote('unavailable')}
             disabled={disabled}
+            slotLabel={slotLabel}
           />
         </div>
       )}
@@ -122,9 +128,10 @@ interface VoteButtonProps {
   isActive: boolean
   onClick: () => void
   disabled?: boolean
+  slotLabel: string
 }
 
-function VoteButton({ type, isActive, onClick, disabled }: VoteButtonProps) {
+function VoteButton({ type, isActive, onClick, disabled, slotLabel }: VoteButtonProps) {
   const config = {
     available: {
       icon: Check,
@@ -145,10 +152,13 @@ function VoteButton({ type, isActive, onClick, disabled }: VoteButtonProps) {
 
   const { icon: Icon, label, activeClass } = config[type]
 
+  const stateHint = isActive ? ` (currently selected)` : ''
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      aria-label={`${label} for ${slotLabel}${stateHint}`}
+      aria-pressed={isActive}
       className={cn(
         'flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all',
         'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -157,7 +167,7 @@ function VoteButton({ type, isActive, onClick, disabled }: VoteButtonProps) {
           : 'bg-background border-border text-text-secondary hover:bg-card-hover hover:text-white'
       )}
     >
-      <Icon className="w-4 h-4" />
+      <Icon className="w-4 h-4" aria-hidden="true" />
       <span className="font-medium text-sm">{label}</span>
     </button>
   )

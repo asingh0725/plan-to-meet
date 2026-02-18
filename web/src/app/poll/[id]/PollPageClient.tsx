@@ -151,9 +151,9 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center" role="status" aria-label="Loading poll">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-accent-blue animate-spin mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 text-accent-blue animate-spin mx-auto mb-4" aria-hidden="true" />
           <p className="text-text-secondary">Loading poll...</p>
         </div>
       </div>
@@ -181,6 +181,16 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Live region for screen readers — announces vote count changes */}
+      <div
+        aria-live="polite"
+        aria-atomic="false"
+        className="sr-only"
+      >
+        {poll.participants.length > 0 &&
+          `${poll.participants.length} ${poll.participants.length === 1 ? 'person has' : 'people have'} responded`}
+      </div>
+
       {/* Header */}
       <header className="sticky top-0 z-40 glass border-b border-white/5">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-end">
@@ -188,9 +198,10 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
           {!isFinalized && (
             <button
               onClick={handleShare}
+              aria-label="Share poll link"
               className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-xl text-white hover:bg-card-hover transition-colors"
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-4 h-4" aria-hidden="true" />
               <span className="text-sm font-medium">Share</span>
             </button>
           )}
