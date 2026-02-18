@@ -468,6 +468,7 @@ struct PollDetailView: View {
         // Creator actions (if poll is open)
         if viewModel.canFinalize {
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 viewModel.showFinalizationUI = true
             } label: {
                 HStack(spacing: 8) {
@@ -737,6 +738,7 @@ struct PollDetailView: View {
 
         return Button {
             if viewModel.isPollOpen {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 viewModel.toggleResponse(slotId: slot.id)
             }
         } label: {

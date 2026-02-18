@@ -47,6 +47,7 @@ struct PollDetailScreen: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     showShareSheet = true
                 } label: {
                     Image(systemName: "square.and.arrow.up")
@@ -221,7 +222,10 @@ struct PollDetailScreen: View {
 
             // Submit button (only if not read-only)
             if !isReadOnly {
-                Button(action: { viewModel.submitResponses() }) {
+                Button(action: {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    viewModel.submitResponses()
+                }) {
                     HStack(spacing: 8) {
                         if viewModel.isSubmitting {
                             ProgressView()
@@ -284,6 +288,7 @@ struct PollDetailScreen: View {
             } else {
                 // Interactive: allow voting
                 Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     viewModel.toggleResponse(slotId: slot.id)
                 } label: {
                     slotContent(slot: slot, myResponse: myResponse, yesCount: yesCount, maybeCount: maybeCount, isBestSlot: isBestSlot)
