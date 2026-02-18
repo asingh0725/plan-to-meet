@@ -5,6 +5,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = HomeViewModel()
+    @State private var showCreatePoll = false
 
     var body: some View {
         NavigationStack {
@@ -31,11 +32,30 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(Theme.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        showCreatePoll = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .foregroundColor(Theme.accentBlue)
+                            .fontWeight(.semibold)
+                    }
+                    .accessibilityLabel("Create new poll")
+                }
+            }
             .refreshable {
                 await viewModel.loadPolls(sessionId: appState.sessionId)
             }
             .navigationDestination(for: SupabaseAPI.PollRow.self) { poll in
                 PollDetailScreen(pollId: poll.id, isReadOnly: true)
+            }
+            .sheet(isPresented: $showCreatePoll) {
+                Task { await viewModel.loadPolls(sessionId: appState.sessionId) }
+            } content: {
+                CreatePollView()
+                    .environmentObject(appState)
             }
         }
         .onAppear {
