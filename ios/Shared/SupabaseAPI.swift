@@ -360,6 +360,23 @@ enum SupabaseAPI {
         return participants.count
     }
 
+    // MARK: - Write: Push Token
+
+    static func registerPushToken(sessionId: String, token: String) async throws {
+        let body: [String: Any] = [
+            "session_id": sessionId,
+            "token": token,
+            "platform": "ios"
+        ]
+        // Upsert on (session_id, token) unique constraint
+        let request = try makePostRequest(
+            path: "/push_tokens?on_conflict=session_id,token",
+            body: body,
+            upsert: true
+        )
+        try await executePost(request)
+    }
+
     // MARK: - Write: Finalize Poll
 
     static func finalizePoll(pollId: String, slotId: String) async throws {

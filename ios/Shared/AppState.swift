@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UserNotifications
 
 /// Shared app state accessible from both main app and iMessage extension via App Group
 final class AppState: ObservableObject {
@@ -11,6 +12,8 @@ final class AppState: ObservableObject {
     @Published var displayName: String
     @Published var calendarEnabled: Bool
     @Published var hasCompletedOnboarding: Bool
+    @Published var pushNotificationsEnabled: Bool
+    @Published var pushToken: String?
 
     private init() {
         // Use App Group shared UserDefaults
@@ -38,6 +41,9 @@ final class AppState: ObservableObject {
 
         // Load onboarding completion state
         self.hasCompletedOnboarding = defaults.bool(forKey: AppConstants.Keys.hasCompletedOnboarding)
+
+        // Load push notification preference
+        self.pushNotificationsEnabled = defaults.bool(forKey: AppConstants.Keys.pushNotificationsEnabled)
     }
 
     func updateDisplayName(_ name: String) {
@@ -53,6 +59,32 @@ final class AppState: ObservableObject {
     func completeOnboarding() {
         hasCompletedOnboarding = true
         defaults.set(true, forKey: AppConstants.Keys.hasCompletedOnboarding)
+    }
+
+    // MARK: - Push Notifications
+
+    /// Requests APNs authorization and registers with Apple if granted.
+    func requestPushNotifications(completion: @escaping (Bool) -> Void = { _ in }) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, _ in
+            DispatchQueue.main.async {
+                self?.pushNotificationsEnabled = granted
+                self?.defaults.set(granted, forKey: AppConstants.Keys.pushNotificationsEnabled)
+                if granted {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+                completion(granted)
+            }
+        }
+    }
+
+    /// Called by AppDelegate when APNs returns a device token.
+    /// Persists the token and registers it with Supabase.
+    func onPushTokenReceived(_ token: String) {
+        pushToken = token
+        let sid = sessionId
+        Task {
+            try? await SupabaseAPI.registerPushToken(sessionId: sid, token: token)
+        }
     }
 
     /// Returns the display name or a default fallback

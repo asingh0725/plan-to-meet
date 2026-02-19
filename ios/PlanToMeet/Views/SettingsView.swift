@@ -1,5 +1,6 @@
 import EventKit
 import SwiftUI
+import UserNotifications
 
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
@@ -14,6 +15,7 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         profileSection
+                        notificationsSection
                         calendarSection
                         aboutSection
                     }
@@ -29,6 +31,7 @@ struct SettingsView: View {
         .onAppear {
             displayNameInput = appState.displayName
             viewModel.checkCalendarStatus()
+            viewModel.checkPushStatus()
         }
     }
 
@@ -69,6 +72,105 @@ struct SettingsView: View {
             }
             .padding(16)
             .cardStyle()
+        }
+    }
+
+    // MARK: - Notifications Section
+
+    private var notificationsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: "Notifications", icon: "bell")
+
+            VStack(spacing: 0) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Poll Activity Alerts")
+                            .font(.body.weight(.medium))
+                            .foregroundColor(Theme.textPrimary)
+
+                        Text(pushStatusText)
+                            .font(.caption)
+                            .foregroundColor(pushStatusColor)
+                    }
+
+                    Spacer()
+
+                    if viewModel.isRequestingPushAccess {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: Theme.accentBlue))
+                    } else {
+                        Toggle("", isOn: Binding(
+                            get: { viewModel.isPushAuthorized },
+                            set: { enabled in
+                                if enabled {
+                                    appState.requestPushNotifications { granted in
+                                        viewModel.checkPushStatus()
+                                    }
+                                    viewModel.isRequestingPushAccess = true
+                                } else {
+                                    appState.pushNotificationsEnabled = false
+                                }
+                            }
+                        ))
+                        .labelsHidden()
+                        .tint(Theme.accentBlue)
+                        .disabled(viewModel.pushStatus == .denied || viewModel.pushStatus == .provisional)
+                    }
+                }
+                .padding(16)
+
+                Divider().background(Theme.border)
+
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "info.circle")
+                        .font(.subheadline)
+                        .foregroundColor(Theme.accentBlue)
+
+                    Text("Get notified when your poll receives responses or a final time is chosen.")
+                        .font(.caption)
+                        .foregroundColor(Theme.textTertiary)
+                }
+                .padding(16)
+
+                if viewModel.pushStatus == .denied {
+                    Divider().background(Theme.border)
+
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack {
+                            Text("Open Settings to Enable")
+                                .font(.subheadline.weight(.medium))
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                        }
+                        .foregroundColor(Theme.accentBlue)
+                        .padding(16)
+                    }
+                }
+            }
+            .cardStyle()
+        }
+    }
+
+    private var pushStatusText: String {
+        if viewModel.isPushAuthorized { return "Enabled" }
+        switch viewModel.pushStatus {
+        case .notDetermined: return "Not set up"
+        case .denied: return "Disabled — enable in Settings"
+        case .provisional: return "Provisional (silent)"
+        default: return "Not available"
+        }
+    }
+
+    private var pushStatusColor: Color {
+        if viewModel.isPushAuthorized { return .green }
+        switch viewModel.pushStatus {
+        case .denied: return Theme.accentOrange
+        default: return Theme.textTertiary
         }
     }
 
@@ -243,8 +345,23 @@ struct SettingsView: View {
 final class SettingsViewModel: ObservableObject {
     @Published var calendarStatus: EKAuthorizationStatus = .notDetermined
     @Published var isRequestingAccess = false
+    @Published var pushStatus: UNAuthorizationStatus = .notDetermined
+    @Published var isRequestingPushAccess = false
 
     private let eventStore = EKEventStore()
+
+    var isPushAuthorized: Bool {
+        pushStatus == .authorized || pushStatus == .provisional
+    }
+
+    func checkPushStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            DispatchQueue.main.async {
+                self?.pushStatus = settings.authorizationStatus
+                self?.isRequestingPushAccess = false
+            }
+        }
+    }
 
     var isCalendarAuthorized: Bool {
         if calendarStatus == .authorized {
