@@ -1,0 +1,13 @@
+# Supabase CLI project configuration.
+# Get your project-id from: Project Settings → General → Reference ID
+# https://supabase.com/docs/reference/cli/config
+
+[project]
+id = "your-project-ref"   # ← replace with your Supabase project reference ID
+
+# Edge Functions
+[functions.send-push-notification]
+# Disable JWT verification — the function validates the payload itself.
+# The Edge Function is called by internal DB triggers (via pg_net) using the
+# service_role key, not by external clients.
+verify_jwt = false

@@ -40,9 +40,13 @@ TimeTogether/
 - **No accounts required** - Anyone can respond via shared link
 - **Visual Grid Picker** - Tap cells on a calendar grid to mark availability
 - **Calendar Integration** - See busy times while selecting availability
-- **Real-time Updates** - See votes as they come in
+- **Real-time Updates** - See votes as they come in via Supabase Realtime (WebSocket)
+- **Push Notifications** - Get notified when your poll gets responses or is finalized
 - **One-tap finalize** - Creator locks in the best time
 - **Add to Calendar** - Everyone can add the finalized event
+- **Reactions** - Leave an emoji reaction and comment on finalized polls
+- **Schedule Again** - Clone a finalized poll with new dates for recurring events
+- **iCloud Sync** - Session ID and display name sync across your devices
 
 ## iOS App
 
@@ -53,8 +57,21 @@ TimeTogether/
 ### Setup
 1. Open `ios/PlanToMeet.xcodeproj` in Xcode
 2. Copy `ios/Shared/Secrets.xcconfig.example` to `ios/Shared/Secrets.xcconfig`
-3. Add your Supabase credentials to `Secrets.xcconfig`
-4. Build and run
+3. Add your credentials to `Secrets.xcconfig`:
+   ```
+   SUPABASE_URL = https://your-project.supabase.co
+   SUPABASE_ANON_KEY = your-anon-key
+   SENTRY_DSN = https://your-dsn@sentry.io/project-id   # optional
+   SENTRY_ENVIRONMENT = development
+   ```
+4. Add required Xcode capabilities (Signing & Capabilities tab for PlanToMeet target):
+   - **Push Notifications** — enables APNs
+   - **Background Modes → Remote notifications** — wake on push
+   - **iCloud → Key-value storage** — cross-device session sync
+5. Add the Sentry Swift package (optional — crash reporting):
+   File → Add Package Dependencies → `https://github.com/getsentry/sentry-cocoa`
+   Add to the **PlanToMeet** target only.
+6. Build and run
 
 ### Targets
 - **PlanToMeet** - Main iOS app for viewing polls and settings
@@ -84,14 +101,27 @@ npm run dev
 ## Database (Supabase)
 
 ### Tables
-- `polls` - Poll metadata (title, duration, status)
+- `polls` - Poll metadata (title, duration, status, parent_poll_id)
 - `time_slots` - Available time options
 - `responses` - User votes (yes/maybe/no)
 - `participants` - Poll participants with display names
 - `availability_blocks` - Creator's availability ranges
+- `push_tokens` - APNs device tokens for push notifications
+- `reactions` - Emoji reactions and comments on finalized polls
 
-### Schema
-See `supabase/` directory for migrations and schema.
+### Schema Setup
+
+Run the consolidated migration in the Supabase SQL editor:
+
+```bash
+# In Supabase Dashboard → SQL Editor:
+# 1. Run supabase/setup.sql  (creates push_tokens, reactions, adds parent_poll_id)
+# 2. Set database config vars for pg_net triggers:
+ALTER DATABASE postgres SET app.supabase_url = 'https://<ref>.supabase.co';
+ALTER DATABASE postgres SET app.service_role_key = '<your-service-role-key>';
+# 3. Enable pg_net extension: Project Settings → Database → Extensions → pg_net
+# 4. Run supabase/triggers.sql  (auto-fires push notifications on DB events)
+```
 
 ## Universal Links & App Clip
 
@@ -169,6 +199,8 @@ npm run dev
 ```
 SUPABASE_URL = https://your-project.supabase.co
 SUPABASE_ANON_KEY = your-anon-key
+SENTRY_DSN = https://your-dsn@sentry.io/project-id
+SENTRY_ENVIRONMENT = development
 ```
 
 **Web** (`web/.env.local`):
@@ -176,6 +208,18 @@ SUPABASE_ANON_KEY = your-anon-key
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
+
+**Supabase Edge Function** (`supabase secrets set ...`):
+```
+APNS_KEY_P8=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
+APNS_KEY_ID=XXXXXXXXXX          # 10-char key ID from Apple Developer portal
+APNS_TEAM_ID=XXXXXXXXXX         # 10-char team ID (Account → Membership)
+APNS_BUNDLE_ID=com.aviraj.plantomeet
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+```
+
+See `supabase/functions/send-push-notification/.env.example` for full details.
 
 ## Deployment
 
@@ -186,9 +230,31 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 4. Deploy
 
 ### iOS (App Store)
-1. Archive in Xcode
+1. Archive in Xcode (`Product → Archive`)
 2. Upload to App Store Connect
 3. Submit for review
+
+### Push Notifications (Supabase Edge Function)
+```bash
+# 1. Set secrets
+supabase secrets set \
+  APNS_KEY_P8="$(cat /path/to/AuthKey_XXXXXXXXXX.p8)" \
+  APNS_KEY_ID=XXXXXXXXXX \
+  APNS_TEAM_ID=XXXXXXXXXX \
+  APNS_BUNDLE_ID=com.aviraj.plantomeet \
+  SUPABASE_URL=https://your-project.supabase.co \
+  SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# 2. Deploy the function
+supabase functions deploy send-push-notification
+
+# 3. In Supabase SQL Editor — enable pg_net and install triggers
+#    (after running setup.sql and setting app.supabase_url / app.service_role_key)
+```
+
+The DB triggers in `supabase/triggers.sql` automatically fire the Edge Function when:
+- A new response is inserted (notifies poll creator)
+- A poll is finalized (notifies all participants)
 
 ## License
 
