@@ -6,9 +6,13 @@ import SwiftUI
 //    URL: https://github.com/getsentry/sentry-cocoa
 //    Version: 8.x.x
 // 2. Add SENTRY_DSN to ios/PlanToMeet/Secrets.xcconfig
-// 3. Uncomment the Sentry import and SentrySDK.start block below
 //
-// import Sentry
+// Once the Swift Package is added the #if canImport(Sentry) block below
+// activates automatically — no further code changes needed.
+
+#if canImport(Sentry)
+import Sentry
+#endif
 
 @main
 struct PlanToMeetApp: App {
@@ -34,17 +38,17 @@ struct PlanToMeetApp: App {
     }
 
     private func configureSentry() {
-        // Uncomment after adding Sentry Swift Package:
-        //
-        // guard let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String,
-        //       !dsn.isEmpty else { return }
-        //
-        // SentrySDK.start { options in
-        //     options.dsn = dsn
-        //     options.environment = Bundle.main.object(forInfoDictionaryKey: "SENTRY_ENVIRONMENT") as? String ?? "production"
-        //     options.tracesSampleRate = 0.1
-        //     options.enableCrashHandler = true
-        //     options.enableSwiftAsyncStacktraces = true
-        // }
+        #if canImport(Sentry)
+        guard let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String,
+              !dsn.isEmpty else { return }
+
+        SentrySDK.start { options in
+            options.dsn = dsn
+            options.environment = Bundle.main.object(forInfoDictionaryKey: "SENTRY_ENVIRONMENT") as? String ?? "production"
+            options.tracesSampleRate = 0.1
+            options.enableCrashHandler = true
+            options.enableSwiftAsyncStacktraces = true
+        }
+        #endif
     }
 }
