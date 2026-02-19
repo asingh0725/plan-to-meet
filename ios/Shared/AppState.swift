@@ -2,11 +2,16 @@ import Foundation
 import Combine
 import UserNotifications
 
-/// Shared app state accessible from both main app and iMessage extension via App Group
+/// Shared app state accessible from both main app and iMessage extension via App Group.
+///
+/// Session ID and display name are synced to iCloud Key-Value Store so they
+/// survive device restores and transfers. The iCloud value wins on first launch
+/// after a reinstall, keeping the user's poll history intact.
 final class AppState: ObservableObject {
     static let shared = AppState()
 
     private let defaults: UserDefaults
+    private let icloud = NSUbiquitousKeyValueStore.default
 
     @Published var sessionId: String
     @Published var displayName: String
@@ -16,39 +21,89 @@ final class AppState: ObservableObject {
     @Published var pushToken: String?
 
     private init() {
-        // Use App Group shared UserDefaults
+        // Use App Group shared UserDefaults (shared with Messages extension)
         if let sharedDefaults = UserDefaults(suiteName: AppConstants.appGroupId) {
             self.defaults = sharedDefaults
         } else {
-            // Fallback to standard defaults if App Group not available
             self.defaults = UserDefaults.standard
         }
 
-        // Load or create session ID
-        if let existing = defaults.string(forKey: AppConstants.Keys.sessionId), !existing.isEmpty {
+        // ---------- Session ID ----------
+        // Priority: iCloud → existing local → generate new
+        let icloudSession = icloud.string(forKey: AppConstants.Keys.sessionId)
+        let localSession = defaults.string(forKey: AppConstants.Keys.sessionId)
+
+        if let existing = localSession, !existing.isEmpty {
+            // Local value exists. If iCloud has a different (older) value, adopt local
+            // and push it to iCloud so all devices eventually converge.
             self.sessionId = existing
+            if icloudSession == nil || icloudSession!.isEmpty {
+                icloud.set(existing, forKey: AppConstants.Keys.sessionId)
+            }
+        } else if let fromCloud = icloudSession, !fromCloud.isEmpty {
+            // Fresh install / reinstall — restore session from iCloud
+            self.sessionId = fromCloud
+            defaults.set(fromCloud, forKey: AppConstants.Keys.sessionId)
         } else {
+            // Brand new user: generate, persist locally and to iCloud
             let newId = UUID().uuidString.lowercased()
             defaults.set(newId, forKey: AppConstants.Keys.sessionId)
+            icloud.set(newId, forKey: AppConstants.Keys.sessionId)
             self.sessionId = newId
         }
 
-        // Load display name
-        self.displayName = defaults.string(forKey: AppConstants.Keys.displayName) ?? ""
+        // ---------- Display Name ----------
+        let localName = defaults.string(forKey: AppConstants.Keys.displayName) ?? ""
+        let icloudName = icloud.string(forKey: AppConstants.Keys.displayName) ?? ""
+        // Prefer whichever is non-empty; local wins if both set
+        self.displayName = localName.isEmpty ? icloudName : localName
+        if !self.displayName.isEmpty {
+            icloud.set(self.displayName, forKey: AppConstants.Keys.displayName)
+        }
 
-        // Load calendar preference
+        // ---------- Other preferences ----------
         self.calendarEnabled = defaults.bool(forKey: AppConstants.Keys.calendarEnabled)
-
-        // Load onboarding completion state
         self.hasCompletedOnboarding = defaults.bool(forKey: AppConstants.Keys.hasCompletedOnboarding)
-
-        // Load push notification preference
         self.pushNotificationsEnabled = defaults.bool(forKey: AppConstants.Keys.pushNotificationsEnabled)
+
+        // Sync iCloud KV store on launch
+        icloud.synchronize()
+
+        // Observe external iCloud changes (e.g. another device updates the name)
+        NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: icloud,
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleICloudChange(notification)
+        }
     }
+
+    // MARK: - iCloud Change Handler
+
+    private func handleICloudChange(_ notification: Notification) {
+        guard let keys = notification.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String] else { return }
+
+        for key in keys {
+            switch key {
+            case AppConstants.Keys.displayName:
+                if let name = icloud.string(forKey: key), !name.isEmpty, name != displayName {
+                    displayName = name
+                    defaults.set(name, forKey: key)
+                }
+            default:
+                break
+            }
+        }
+    }
+
+    // MARK: - Mutators
 
     func updateDisplayName(_ name: String) {
         displayName = name
         defaults.set(name, forKey: AppConstants.Keys.displayName)
+        icloud.set(name, forKey: AppConstants.Keys.displayName)
+        icloud.synchronize()
     }
 
     func updateCalendarEnabled(_ enabled: Bool) {
@@ -78,7 +133,6 @@ final class AppState: ObservableObject {
     }
 
     /// Called by AppDelegate when APNs returns a device token.
-    /// Persists the token and registers it with Supabase.
     func onPushTokenReceived(_ token: String) {
         pushToken = token
         let sid = sessionId
@@ -87,7 +141,8 @@ final class AppState: ObservableObject {
         }
     }
 
-    /// Returns the display name or a default fallback
+    // MARK: - Computed
+
     var displayNameOrDefault: String {
         displayName.isEmpty ? "Anonymous" : displayName
     }
