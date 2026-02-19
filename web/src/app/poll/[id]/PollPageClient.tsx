@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calendar,
@@ -12,10 +13,12 @@ import {
   Check,
   Copy,
   CheckCircle2,
+  RotateCcw,
 } from 'lucide-react'
 import { usePoll, useSubmitResponse, useAddParticipant, useIsParticipant, useUserResponses } from '@/lib/hooks'
 import { getSessionId, getDisplayName, setDisplayName } from '@/lib/utils'
 import { getSlotStats, Availability } from '@/lib/types'
+import { clonePoll } from '@/lib/api/polls'
 import { TimeSlotCard } from '@/components/TimeSlotCard'
 import { NameInput } from '@/components/NameInput'
 import { AddToCalendar } from '@/components/AddToCalendar'
@@ -26,12 +29,14 @@ interface PollPageClientProps {
 }
 
 export function PollPageClient({ pollId }: PollPageClientProps) {
+  const router = useRouter()
   const { data: poll, isLoading, error, isError } = usePoll(pollId)
   const submitResponseMutation = useSubmitResponse()
   const addParticipantMutation = useAddParticipant()
 
   const [showShareToast, setShowShareToast] = useState(false)
   const [localName, setLocalName] = useState<string | null>(null)
+  const [isCloningPoll, setIsCloningPoll] = useState(false)
 
   // Initialize local name from storage
   useEffect(() => {
@@ -120,6 +125,28 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
       availability,
     })
   }
+
+  // Handle schedule again
+  const handleScheduleAgain = useCallback(async () => {
+    if (!poll) return
+    setIsCloningPoll(true)
+    try {
+      const sessionId = getSessionId()
+      // Default to the same date-range length, starting today
+      const today = new Date()
+      const originalSlots = poll.timeSlots
+      const days = originalSlots.length > 0
+        ? new Set(originalSlots.map((s) => s.day)).size
+        : 7
+      const newEnd = new Date(today)
+      newEnd.setDate(newEnd.getDate() + days - 1)
+      const fmt = (d: Date) => d.toISOString().slice(0, 10)
+      const newPollId = await clonePoll(poll.id, fmt(today), fmt(newEnd), sessionId)
+      router.push(`/create?from=${newPollId}`)
+    } catch {
+      setIsCloningPoll(false)
+    }
+  }, [poll, router])
 
   // Handle share
   const handleShare = async () => {
@@ -251,6 +278,16 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
           >
             <AddToCalendar poll={poll} slot={finalizedSlot} />
             <PollReactions pollId={poll.id} participants={poll.participants} />
+            <button
+              onClick={handleScheduleAgain}
+              disabled={isCloningPoll}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-accent-blue/30 bg-accent-blue/10 text-accent-blue text-sm font-semibold hover:bg-accent-blue/15 disabled:opacity-50 transition-all"
+            >
+              {isCloningPoll
+                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                : <RotateCcw className="w-4 h-4" aria-hidden="true" />}
+              {isCloningPoll ? 'Creating…' : 'Schedule Again'}
+            </button>
           </motion.div>
         )}
 

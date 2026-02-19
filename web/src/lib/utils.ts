@@ -58,6 +58,10 @@ export function formatSlotTime(slot: TimeSlot): string {
     const [startHour, startMin] = slot.startTime.split(':').map(Number)
     const [endHour, endMin] = slot.endTime.split(':').map(Number)
 
+    if (isNaN(startHour) || isNaN(endHour)) {
+      return `${slot.startTime} - ${slot.endTime}`
+    }
+
     const formatTime = (hour: number, min: number) => {
       const period = hour >= 12 ? 'PM' : 'AM'
       const h = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour

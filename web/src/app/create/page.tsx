@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { CreatePollClient } from './CreatePollClient'
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 }
 
 export default function CreatePollPage() {
-  return <CreatePollClient />
+  return (
+    <Suspense>
+      <CreatePollClient />
+    </Suspense>
+  )
 }

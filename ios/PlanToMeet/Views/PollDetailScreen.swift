@@ -23,6 +23,7 @@ struct PollDetailScreen: View {
     @State private var showShareSheet = false
     @State private var reactionComment = ""
     @State private var selectedEmoji: String? = nil
+    @State private var showScheduleAgain = false
 
     init(pollId: String, isReadOnly: Bool = false) {
         self.pollId = pollId
@@ -227,6 +228,10 @@ struct PollDetailScreen: View {
                 reactionsSection
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
+
+                scheduleAgainButton
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
             }
 
             // Submit button (only if not read-only)
@@ -368,6 +373,33 @@ struct PollDetailScreen: View {
                 }
             }
             Spacer()
+        }
+    }
+
+    // MARK: - Schedule Again
+
+    private var scheduleAgainButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            showScheduleAgain = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.clockwise.circle")
+                    .font(.subheadline)
+                Text("Schedule Again")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .foregroundColor(Theme.accentBlue)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Theme.accentBlue.opacity(0.1))
+            .cornerRadius(12)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.accentBlue.opacity(0.3), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showScheduleAgain) {
+            ScheduleAgainSheet(sourcePollId: pollId, pollTitle: viewModel.poll?.title ?? "Poll")
+                .environmentObject(appState)
         }
     }
 
@@ -784,6 +816,142 @@ final class PollDetailScreenViewModel: ObservableObject {
                 errorMessage = error.localizedDescription
             }
             isSubmittingReaction = false
+        }
+    }
+}
+
+// MARK: - Schedule Again Sheet
+
+struct ScheduleAgainSheet: View {
+    let sourcePollId: String
+    let pollTitle: String
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @State private var startDate: Date = Calendar.current.startOfDay(for: Date())
+    @State private var endDate: Date = Calendar.current.startOfDay(
+        for: Calendar.current.date(byAdding: .day, value: 6, to: Date()) ?? Date()
+    )
+    @State private var isCloning = false
+    @State private var errorMessage: String?
+    @State private var clonedPollId: String?
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AuthKitBackground()
+
+                VStack(spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("New dates for:")
+                            .font(.subheadline)
+                            .foregroundColor(Theme.textSecondary)
+                        Text(pollTitle)
+                            .font(.headline)
+                            .foregroundColor(Theme.textPrimary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Date Range", systemImage: "calendar")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(Theme.textSecondary)
+
+                        HStack(spacing: 12) {
+                            dateField(label: "From", date: startDate) { startDate = $0 }
+                            dateField(label: "To", date: endDate) { endDate = $0 }
+                        }
+                    }
+
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(12)
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        clone()
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isCloning {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "arrow.clockwise.circle")
+                            }
+                            Text(isCloning ? "Creating…" : "Create New Poll")
+                                .font(.body.weight(.semibold))
+                        }
+                        .primaryButtonStyle(isEnabled: !isCloning && endDate >= startDate)
+                    }
+                    .disabled(isCloning || endDate < startDate)
+                }
+                .padding(20)
+            }
+            .navigationTitle("Schedule Again")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Theme.background, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(Theme.accentBlue)
+                }
+            }
+        }
+        .sheet(isPresented: Binding(get: { clonedPollId != nil }, set: { if !$0 { clonedPollId = nil; dismiss() } })) {
+            if let newId = clonedPollId {
+                NavigationStack {
+                    PollDetailScreen(pollId: newId)
+                        .environmentObject(appState)
+                }
+            }
+        }
+    }
+
+    private func dateField(label: String, date: Date, onChange: @escaping (Date) -> Void) -> some View {
+        let formatter: DateFormatter = {
+            let f = DateFormatter(); f.dateFormat = "MMM d, yyyy"; return f
+        }()
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.caption).foregroundColor(Theme.textTertiary)
+            DatePicker("", selection: Binding(get: { date }, set: onChange), displayedComponents: .date)
+                .datePickerStyle(.compact)
+                .labelsHidden()
+                .tint(Theme.accentBlue)
+                .colorScheme(.dark)
+        }
+        .padding(12)
+        .background(Theme.cardBackground)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+    }
+
+    private func clone() {
+        isCloning = true
+        errorMessage = nil
+        let sid = appState.sessionId
+        let name = appState.displayNameOrDefault
+        Task {
+            do {
+                let newId = try await SupabaseAPI.clonePoll(
+                    sourcePollId: sourcePollId,
+                    newStartDate: startDate,
+                    newEndDate: endDate,
+                    sessionId: sid,
+                    displayName: name
+                )
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                clonedPollId = newId
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isCloning = false
         }
     }
 }

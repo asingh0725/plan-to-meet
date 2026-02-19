@@ -114,6 +114,75 @@ export interface CreatePollInput {
   timeSlots: Array<{ day: string; startTime: string; endTime: string }>
 }
 
+export async function clonePoll(
+  sourcePollId: string,
+  newStartDate: string,
+  newEndDate: string,
+  creatorSessionId: string
+): Promise<string> {
+  // Fetch source poll and its time slots
+  const [sourcePolls, sourceSlots] = await Promise.all([
+    supabaseRequest<PollRow[]>('polls', {
+      params: { select: '*', id: `eq.${sourcePollId}`, limit: '1' },
+    }),
+    supabaseRequest<TimeSlotRow[]>('time_slots', {
+      params: { select: '*', poll_id: `eq.${sourcePollId}` },
+    }),
+  ])
+
+  if (!sourcePolls || sourcePolls.length === 0) {
+    throw new Error('Source poll not found')
+  }
+  const source = sourcePolls[0]
+
+  // Extract unique time windows from original slots (HH:MM-HH:MM)
+  const windows = [
+    ...new Set((sourceSlots || []).map((s) => `${s.start_time}-${s.end_time}`)),
+  ]
+
+  // Generate new date list
+  const dates: string[] = []
+  const start = new Date(newStartDate)
+  const end = new Date(newEndDate)
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    dates.push(d.toISOString().slice(0, 10))
+  }
+
+  const newPollId = crypto.randomUUID()
+  const now = new Date().toISOString()
+
+  await supabaseRequest('polls', {
+    method: 'POST',
+    body: {
+      id: newPollId,
+      title: source.title,
+      duration_minutes: source.duration_minutes,
+      status: 'open',
+      created_at: now,
+      creator_session_id: creatorSessionId,
+      parent_poll_id: sourcePollId,
+    },
+    headers: { Prefer: 'return=minimal' },
+  })
+
+  const slotBodies = dates.flatMap((day) =>
+    windows.map((w) => {
+      const [start_time, end_time] = w.split('-')
+      return { id: crypto.randomUUID(), poll_id: newPollId, day, start_time, end_time }
+    })
+  )
+
+  if (slotBodies.length > 0) {
+    await supabaseRequest('time_slots', {
+      method: 'POST',
+      body: slotBodies,
+      headers: { Prefer: 'return=minimal' },
+    })
+  }
+
+  return newPollId
+}
+
 export async function createPoll(input: CreatePollInput): Promise<string> {
   const pollId = crypto.randomUUID()
   const now = new Date().toISOString()

@@ -136,6 +136,7 @@ enum SupabaseAPI {
         let createdAt: String
         let creatorSessionId: String?
         let finalizedSlotId: String?
+        let parentPollId: String?
 
         var createdDate: Date? {
             let formatter = ISO8601DateFormatter()
@@ -415,6 +416,80 @@ enum SupabaseAPI {
             upsert: true
         )
         try await executePost(request)
+    }
+
+    // MARK: - Clone Poll (Recurring)
+
+    /// Clones a finalized poll with a new date range, preserving title and duration.
+    /// The time-of-day windows from the original slots are reused across the new dates.
+    /// Returns the new poll ID.
+    static func clonePoll(
+        sourcePollId: String,
+        newStartDate: Date,
+        newEndDate: Date,
+        sessionId: String,
+        displayName: String
+    ) async throws -> String {
+        // 1. Fetch source poll
+        guard let source = try await fetchPoll(id: sourcePollId) else {
+            throw APIError.httpError(statusCode: 404, body: "Source poll not found")
+        }
+
+        // 2. Fetch original time slots to extract unique time windows
+        let sourceSlots = try await fetchTimeSlots(pollId: sourcePollId)
+        let timeWindows = Array(Set(sourceSlots.map { "\($0.startTime)-\($0.endTime)" })).sorted()
+
+        // 3. Generate new date list
+        let calendar = Calendar.current
+        var dates: [String] = []
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd"
+        df.locale = Locale(identifier: "en_US_POSIX")
+        var current = calendar.startOfDay(for: newStartDate)
+        let end = calendar.startOfDay(for: newEndDate)
+        while current <= end {
+            dates.append(df.string(from: current))
+            current = calendar.date(byAdding: .day, value: 1, to: current) ?? current.addingTimeInterval(86400)
+        }
+
+        // 4. Build new slots: cross product of dates × time windows
+        let newPollId = UUID().uuidString.lowercased()
+        let slots: [[String: String]] = dates.flatMap { date in
+            timeWindows.compactMap { window -> [String: String]? in
+                let parts = window.split(separator: "-")
+                guard parts.count == 2 else { return nil }
+                return ["id": UUID().uuidString.lowercased(),
+                        "poll_id": newPollId,
+                        "day": date,
+                        "start_time": String(parts[0]),
+                        "end_time": String(parts[1])]
+            }
+        }
+
+        // 5. Create the new poll
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let now = isoFormatter.string(from: Date())
+
+        var body: [String: Any] = [
+            "id": newPollId,
+            "title": source.title,
+            "duration_minutes": source.durationMinutes,
+            "status": "open",
+            "created_at": now,
+            "creator_session_id": sessionId,
+            "parent_poll_id": sourcePollId
+        ]
+
+        let request = try makePostRequest(path: "/polls", body: body)
+        try await executePost(request)
+
+        if !slots.isEmpty {
+            try await insertTimeSlots(pollId: newPollId, slots: slots)
+        }
+        try await insertParticipant(pollId: newPollId, sessionId: sessionId, displayName: displayName)
+
+        return newPollId
     }
 
     // MARK: - Write: Finalize Poll

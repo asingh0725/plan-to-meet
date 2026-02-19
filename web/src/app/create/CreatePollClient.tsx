@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { addDays, format, startOfDay, eachDayOfInterval, parseISO } from 'date-fns'
-import { createPoll } from '@/lib/api/polls'
+import { createPoll, fetchPollBasic } from '@/lib/api/polls'
 import { getSessionId } from '@/lib/utils'
 
 // MARK: - Types
@@ -66,6 +66,7 @@ function generateTimeSlots(
 
 export function CreatePollClient() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [title, setTitle] = useState('')
   const [durationMinutes, setDurationMinutes] = useState(60)
   const [startDate, setStartDate] = useState(() => format(startOfDay(new Date()), 'yyyy-MM-dd'))
@@ -74,6 +75,17 @@ export function CreatePollClient() {
   const [dayEndTime, setDayEndTime] = useState('18:00')
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Pre-populate from a cloned poll (?from=pollId)
+  useEffect(() => {
+    const fromId = searchParams.get('from')
+    if (!fromId) return
+    fetchPollBasic(fromId).then((poll) => {
+      if (!poll) return
+      setTitle(poll.title)
+      setDurationMinutes(poll.durationMinutes)
+    })
+  }, [searchParams])
 
   const selectedDays = useMemo(() => {
     try {

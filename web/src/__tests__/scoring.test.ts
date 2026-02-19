@@ -79,7 +79,7 @@ describe('getSlotStats — slot scoring algorithm', () => {
     expect(stats.score).toBe(-3)
   })
 
-  it('preferred slot wins tie: 2 available beats 4 maybe', () => {
+  it('2 available ties with 4 maybe: both score 4', () => {
     const slot1Responses = [makeResponse('slot-1', 'available'), makeResponse('slot-1', 'available')]
     const slot2Responses = [
       makeResponse('slot-2', 'maybe'),
@@ -89,8 +89,7 @@ describe('getSlotStats — slot scoring algorithm', () => {
     ]
     const stats1 = getSlotStats(slot1Responses, 'slot-1')
     const stats2 = getSlotStats(slot2Responses, 'slot-2')
-    expect(stats1.score).toBeGreaterThan(stats2.score) // 4 > 4? Equal: 4 == 4
-    // Actually 2*2=4 vs 4*1=4, they're equal — document this edge case
-    expect(stats1.score).toBe(stats2.score) // Both score 4 — valid tie
+    // 2 available = 2*2 = 4, 4 maybe = 4*1 = 4 — equal score, valid tie
+    expect(stats1.score).toBe(stats2.score)
   })
 })
