@@ -136,9 +136,9 @@ export async function clonePoll(
   const source = sourcePolls[0]
 
   // Extract unique time windows from original slots (HH:MM-HH:MM)
-  const windows = [
-    ...new Set((sourceSlots || []).map((s) => `${s.start_time}-${s.end_time}`)),
-  ]
+  const windows = Array.from(
+    new Set((sourceSlots || []).map((s) => `${s.start_time}-${s.end_time}`))
+  )
 
   // Generate new date list
   const dates: string[] = []

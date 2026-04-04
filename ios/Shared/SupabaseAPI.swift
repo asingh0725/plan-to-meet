@@ -471,7 +471,7 @@ enum SupabaseAPI {
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let now = isoFormatter.string(from: Date())
 
-        var body: [String: Any] = [
+        let body: [String: Any] = [
             "id": newPollId,
             "title": source.title,
             "duration_minutes": source.durationMinutes,

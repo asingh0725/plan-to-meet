@@ -1,24 +1,5 @@
 import { createClient, RealtimeChannel } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-  )
-}
-
-// REST API base URL (used by the existing custom HTTP client)
-const baseUrl = `${supabaseUrl}/rest/v1`
-
-// Supabase JS client — used only for Realtime subscriptions.
-// All CRUD operations still go through supabaseRequest() to avoid extra bundle weight.
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false },
-  realtime: { params: { eventsPerSecond: 10 } },
-})
-
 // MARK: - Custom REST Client
 
 export interface SupabaseRequestOptions {
@@ -39,10 +20,45 @@ export class SupabaseError extends Error {
   }
 }
 
+function getSupabaseConfig() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new SupabaseError(
+      'Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.',
+      0
+    )
+  }
+
+  return {
+    supabaseUrl,
+    supabaseAnonKey,
+    baseUrl: `${supabaseUrl}/rest/v1`,
+  }
+}
+
+let realtimeClient: ReturnType<typeof createClient> | null = null
+
+function getSupabaseClient() {
+  if (realtimeClient) {
+    return realtimeClient
+  }
+
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
+  realtimeClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false },
+    realtime: { params: { eventsPerSecond: 10 } },
+  })
+
+  return realtimeClient
+}
+
 export async function supabaseRequest<T>(
   path: string,
   { method = 'GET', params, body, headers = {} }: SupabaseRequestOptions = {}
 ): Promise<T> {
+  const { baseUrl, supabaseAnonKey } = getSupabaseConfig()
   const url = new URL(`${baseUrl}/${path}`)
 
   if (params) {
@@ -109,7 +125,16 @@ export function createPollRealtimeSubscription(
   pollId: string,
   onUpdate: () => void
 ): () => void {
-  const channel: RealtimeChannel = supabaseClient
+  let client: ReturnType<typeof createClient>
+
+  try {
+    client = getSupabaseClient()
+  } catch (error) {
+    console.warn('Supabase Realtime disabled:', error)
+    return () => {}
+  }
+
+  const channel: RealtimeChannel = client
     .channel(`poll-${pollId}`)
     .on(
       'postgres_changes',
@@ -134,6 +159,6 @@ export function createPollRealtimeSubscription(
     .subscribe()
 
   return () => {
-    supabaseClient.removeChannel(channel)
+    client.removeChannel(channel)
   }
 }

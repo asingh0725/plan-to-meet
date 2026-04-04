@@ -34,7 +34,7 @@ export function PollReactions({ pollId, participants }: PollReactionsProps) {
       setSelectedEmoji(myReaction.emoji)
       setComment(myReaction.comment ?? '')
     }
-  }, [myReaction?.id])
+  }, [myReaction])
 
   const mutation = useMutation({
     mutationFn: ({ emoji, comment }: { emoji: string; comment: string }) =>

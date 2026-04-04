@@ -915,9 +915,6 @@ struct ScheduleAgainSheet: View {
     }
 
     private func dateField(label: String, date: Date, onChange: @escaping (Date) -> Void) -> some View {
-        let formatter: DateFormatter = {
-            let f = DateFormatter(); f.dateFormat = "MMM d, yyyy"; return f
-        }()
         return VStack(alignment: .leading, spacing: 4) {
             Text(label).font(.caption).foregroundColor(Theme.textTertiary)
             DatePicker("", selection: Binding(get: { date }, set: onChange), displayedComponents: .date)

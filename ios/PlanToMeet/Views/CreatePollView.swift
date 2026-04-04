@@ -92,8 +92,8 @@ final class CreatePollViewModel: ObservableObject {
     }
 
     private func requestCalendarAccess() {
-        let handle: (Bool, Error?) -> Void = { [weak self] granted, error in
-            DispatchQueue.main.async {
+        let handle: @Sendable (Bool, Error?) -> Void = { [weak self] granted, _ in
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 if granted { self.useCalendar = true; self.fetchCalendarEvents() }
                 else { self.errorMessage = "Calendar access not granted." }

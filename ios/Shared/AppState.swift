@@ -1,6 +1,9 @@
 import Foundation
 import Combine
 import UserNotifications
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Shared app state accessible from both main app and iMessage extension via App Group.
 ///
@@ -56,9 +59,10 @@ final class AppState: ObservableObject {
         let localName = defaults.string(forKey: AppConstants.Keys.displayName) ?? ""
         let icloudName = icloud.string(forKey: AppConstants.Keys.displayName) ?? ""
         // Prefer whichever is non-empty; local wins if both set
-        self.displayName = localName.isEmpty ? icloudName : localName
-        if !self.displayName.isEmpty {
-            icloud.set(self.displayName, forKey: AppConstants.Keys.displayName)
+        let resolvedDisplayName = localName.isEmpty ? icloudName : localName
+        self.displayName = resolvedDisplayName
+        if !resolvedDisplayName.isEmpty {
+            icloud.set(resolvedDisplayName, forKey: AppConstants.Keys.displayName)
         }
 
         // ---------- Other preferences ----------
@@ -125,7 +129,7 @@ final class AppState: ObservableObject {
                 self?.pushNotificationsEnabled = granted
                 self?.defaults.set(granted, forKey: AppConstants.Keys.pushNotificationsEnabled)
                 if granted {
-                    UIApplication.shared.registerForRemoteNotifications()
+                    self?.registerForRemoteNotificationsIfSupported()
                 }
                 completion(granted)
             }
@@ -145,5 +149,11 @@ final class AppState: ObservableObject {
 
     var displayNameOrDefault: String {
         displayName.isEmpty ? "Anonymous" : displayName
+    }
+
+    private func registerForRemoteNotificationsIfSupported() {
+        #if canImport(UIKit) && !APP_EXTENSION
+        UIApplication.shared.registerForRemoteNotifications()
+        #endif
     }
 }

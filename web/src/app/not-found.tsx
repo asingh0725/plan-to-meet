@@ -1,5 +1,4 @@
-import Link from 'next/link'
-import { Calendar, Home } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 
 export default function NotFound() {
   return (
@@ -11,7 +10,7 @@ export default function NotFound() {
 
         <h1 className="text-3xl font-bold text-white mb-3">Page Not Found</h1>
         <p className="text-text-secondary mb-8">
-          The page you're looking for doesn't exist or may have been moved.
+          The page you&apos;re looking for doesn&apos;t exist or may have been moved.
         </p>
       </div>
     </div>

@@ -72,7 +72,7 @@ export function AddToCalendar({ poll, slot }: AddToCalendarProps) {
       </div>
 
       <p className="text-sm text-text-secondary mb-4">
-        Add this event to your calendar so you don't forget.
+        Add this event to your calendar so you don&apos;t forget.
       </p>
 
       <div className="flex flex-col sm:flex-row gap-2">

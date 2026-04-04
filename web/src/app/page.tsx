@@ -1132,15 +1132,15 @@ function Footer() {
         </div>
         <span>(c) {new Date().getFullYear()} PlanToMeet. All rights reserved.</span>
         <div className="flex items-center gap-6">
+          <Link href="/support" className="transition hover:text-text-primary">
+            Support
+          </Link>
           <Link href="/privacy" className="transition hover:text-text-primary">
             Privacy
           </Link>
           <Link href="/terms" className="transition hover:text-text-primary">
             Terms
           </Link>
-          <a href="mailto:support@plantomeet.app" className="transition hover:text-text-primary">
-            Contact
-          </a>
         </div>
       </div>
     </footer>

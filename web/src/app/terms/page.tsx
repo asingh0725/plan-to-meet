@@ -33,7 +33,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-lg font-semibold text-white">Agreement to Terms</h2>
               <p className="mt-2">
-                By accessing or using PlanToMeet ("the Service"), you agree to be bound by these Terms.
+                By accessing or using PlanToMeet (&quot;the Service&quot;), you agree to be bound by these Terms.
                 If you do not agree, do not use the Service.
               </p>
             </section>

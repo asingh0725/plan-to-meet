@@ -335,7 +335,7 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
                 <div>
                   <p className="text-white font-medium">Responses submitted!</p>
                   <p className="text-sm text-text-secondary mt-1">
-                    You've voted on all {responseStats.total} time slots. You can update your responses anytime or close this page.
+                    You&apos;ve voted on all {responseStats.total} time slots. You can update your responses anytime or close this page.
                   </p>
                 </div>
               </div>
