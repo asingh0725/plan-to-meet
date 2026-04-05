@@ -137,11 +137,26 @@ enum SupabaseAPI {
         let creatorSessionId: String?
         let finalizedSlotId: String?
         let parentPollId: String?
+        let isPremium: Bool?
+        let details: String?
+        let closesAt: String?
 
         var createdDate: Date? {
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             return formatter.date(from: createdAt)
+        }
+
+        var closesAtDate: Date? {
+            guard let closesAt else { return nil }
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter.date(from: closesAt) ?? ISO8601DateFormatter().date(from: closesAt)
+        }
+
+        var isVotingClosed: Bool {
+            guard let closesAtDate else { return false }
+            return Date() >= closesAtDate
         }
     }
 
@@ -182,13 +197,16 @@ enum SupabaseAPI {
         id: String,
         title: String,
         durationMinutes: Int,
-        creatorSessionId: String
+        creatorSessionId: String,
+        isPremium: Bool = false,
+        details: String? = nil,
+        closesAt: Date? = nil
     ) async throws {
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let now = isoFormatter.string(from: Date())
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "id": id,
             "title": title,
             "duration_minutes": durationMinutes,
@@ -196,6 +214,16 @@ enum SupabaseAPI {
             "created_at": now,
             "creator_session_id": creatorSessionId
         ]
+
+        if isPremium {
+            body["is_premium"] = true
+        }
+        if let details, !details.isEmpty {
+            body["details"] = details
+        }
+        if let closesAt {
+            body["closes_at"] = isoFormatter.string(from: closesAt)
+        }
 
         let request = try makePostRequest(path: "/polls", body: body)
         try await executePost(request)
@@ -481,7 +509,15 @@ enum SupabaseAPI {
             "parent_poll_id": sourcePollId
         ]
 
-        let request = try makePostRequest(path: "/polls", body: body)
+        var newBody = body
+        if source.isPremium ?? false {
+            newBody["is_premium"] = true
+        }
+        if let details = source.details, !details.isEmpty {
+            newBody["details"] = details
+        }
+
+        let request = try makePostRequest(path: "/polls", body: newBody)
         try await executePost(request)
 
         if !slots.isEmpty {

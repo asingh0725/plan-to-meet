@@ -15,6 +15,7 @@ struct HomeView: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         createInMessagesCard
+                        premiumToolsCard
 
                         if viewModel.isLoading {
                             loadingView
@@ -104,6 +105,49 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: Theme.cornerRadiusMedium)
                 .stroke(Theme.accentBlue.opacity(0.35), lineWidth: 1)
         )
+    }
+
+    private var premiumToolsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Premium Event Tools")
+                        .font(.headline)
+                        .foregroundColor(Theme.textPrimary)
+
+                    Text("Use Event Passes when a plan needs an organizer note, a response deadline, or a premium schedule-again flow.")
+                        .font(.caption)
+                        .foregroundColor(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Text(appState.eventPassBalance == 1 ? "1 pass" : "\(appState.eventPassBalance) passes")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Theme.accentBlue)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Theme.accentBlue.opacity(0.12))
+                    .cornerRadius(999)
+            }
+
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                showCreatePoll = true
+            } label: {
+                Text("Create Premium Poll")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Theme.accentBlue)
+                    .cornerRadius(10)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .cardStyle()
     }
 
     // MARK: - Loading View
@@ -272,7 +316,12 @@ struct PollCard: View {
 
                     Spacer()
 
-                    statusBadge
+                    HStack(spacing: 6) {
+                        if poll.isPremium ?? false {
+                            premiumBadge
+                        }
+                        statusBadge
+                    }
                 }
 
                 // Best time (if available)
@@ -327,6 +376,20 @@ struct PollCard: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(isOpen ? Color.green.opacity(0.15) : (isFinalized ? Theme.accentBlue.opacity(0.15) : Theme.elevatedBackground))
+        .cornerRadius(6)
+    }
+
+    private var premiumBadge: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "sparkles")
+                .font(.caption2)
+            Text("Premium")
+        }
+        .font(.caption2.weight(.medium))
+        .foregroundColor(Theme.accentBlue)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Theme.accentBlue.opacity(0.12))
         .cornerRadius(6)
     }
 

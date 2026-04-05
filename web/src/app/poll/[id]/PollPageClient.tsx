@@ -1,7 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMemo, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calendar,
@@ -13,12 +12,12 @@ import {
   Check,
   Copy,
   CheckCircle2,
-  RotateCcw,
+  Lock,
+  Sparkles,
 } from 'lucide-react'
 import { usePoll, useSubmitResponse, useAddParticipant, useIsParticipant, useUserResponses } from '@/lib/hooks'
-import { getSessionId, getDisplayName, setDisplayName } from '@/lib/utils'
+import { getDisplayName, setDisplayName } from '@/lib/utils'
 import { getSlotStats, Availability } from '@/lib/types'
-import { clonePoll } from '@/lib/api/polls'
 import { TimeSlotCard } from '@/components/TimeSlotCard'
 import { NameInput } from '@/components/NameInput'
 import { AddToCalendar } from '@/components/AddToCalendar'
@@ -29,14 +28,12 @@ interface PollPageClientProps {
 }
 
 export function PollPageClient({ pollId }: PollPageClientProps) {
-  const router = useRouter()
-  const { data: poll, isLoading, error, isError } = usePoll(pollId)
+  const { data: poll, isLoading, isError } = usePoll(pollId)
   const submitResponseMutation = useSubmitResponse()
   const addParticipantMutation = useAddParticipant()
 
   const [showShareToast, setShowShareToast] = useState(false)
   const [localName, setLocalName] = useState<string | null>(null)
-  const [isCloningPoll, setIsCloningPoll] = useState(false)
 
   // Initialize local name from storage
   useEffect(() => {
@@ -45,7 +42,23 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
 
   const isParticipant = useIsParticipant(poll)
   const userResponses = useUserResponses(poll)
-  const needsName = !isParticipant && !localName
+  const responseDeadlinePassed = useMemo(() => {
+    if (!poll?.closesAt) return false
+    const deadline = new Date(poll.closesAt)
+    return !Number.isNaN(deadline.getTime()) && deadline.getTime() <= Date.now()
+  }, [poll?.closesAt])
+  const formattedDeadline = useMemo(() => {
+    if (!poll?.closesAt) return null
+    const deadline = new Date(poll.closesAt)
+    if (Number.isNaN(deadline.getTime())) return poll.closesAt
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(deadline)
+  }, [poll?.closesAt])
+  const needsName = !isParticipant && !localName && !responseDeadlinePassed
 
   // Sorted slots by date/time
   const sortedSlots = useMemo(() => {
@@ -96,6 +109,7 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
 
   // Handle name submission
   const handleNameSubmit = async (name: string) => {
+    if (responseDeadlinePassed) return
     setDisplayName(name)
     setLocalName(name)
 
@@ -109,7 +123,7 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
 
   // Handle response
   const handleRespond = (slotId: string, availability: Availability) => {
-    if (!poll || !localName) return
+    if (!poll || !localName || responseDeadlinePassed) return
 
     // If not yet a participant, add them first
     if (!isParticipant) {
@@ -125,28 +139,6 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
       availability,
     })
   }
-
-  // Handle schedule again
-  const handleScheduleAgain = useCallback(async () => {
-    if (!poll) return
-    setIsCloningPoll(true)
-    try {
-      const sessionId = getSessionId()
-      // Default to the same date-range length, starting today
-      const today = new Date()
-      const originalSlots = poll.timeSlots
-      const days = originalSlots.length > 0
-        ? new Set(originalSlots.map((s) => s.day)).size
-        : 7
-      const newEnd = new Date(today)
-      newEnd.setDate(newEnd.getDate() + days - 1)
-      const fmt = (d: Date) => d.toISOString().slice(0, 10)
-      const newPollId = await clonePoll(poll.id, fmt(today), fmt(newEnd), sessionId)
-      router.push(`/create?from=${newPollId}`)
-    } catch {
-      setIsCloningPoll(false)
-    }
-  }, [poll, router])
 
   // Handle share
   const handleShare = async () => {
@@ -247,6 +239,32 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
             {poll.title || 'Untitled Poll'}
           </h1>
 
+          {(poll.isPremium || poll.details || formattedDeadline) && (
+            <div className="mb-4 space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {poll.isPremium && (
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-accent-blue/15 px-3 py-1 text-xs font-semibold text-accent-blue">
+                    <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Premium Event</span>
+                  </div>
+                )}
+                {formattedDeadline && (
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-medium text-text-secondary">
+                    <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>{responseDeadlinePassed ? 'Voting closed' : `Deadline ${formattedDeadline}`}</span>
+                  </div>
+                )}
+              </div>
+
+              {poll.details && (
+                <div className="rounded-2xl border border-border bg-card p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-tertiary">Organizer Note</p>
+                  <p className="mt-2 text-sm leading-6 text-white">{poll.details}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-4 text-sm text-text-secondary">
             <div className="flex items-center gap-1.5">
               <Clock className="w-4 h-4" />
@@ -278,22 +296,25 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
           >
             <AddToCalendar poll={poll} slot={finalizedSlot} />
             <PollReactions pollId={poll.id} participants={poll.participants} />
-            <button
-              onClick={handleScheduleAgain}
-              disabled={isCloningPoll}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-accent-blue/30 bg-accent-blue/10 text-accent-blue text-sm font-semibold hover:bg-accent-blue/15 disabled:opacity-50 transition-all"
-            >
-              {isCloningPoll
-                ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                : <RotateCcw className="w-4 h-4" aria-hidden="true" />}
-              {isCloningPoll ? 'Creating…' : 'Schedule Again'}
-            </button>
+            {poll.isPremium && (
+              <div className="rounded-xl border border-accent-blue/20 bg-accent-blue/10 p-4">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-blue" aria-hidden="true" />
+                  <div>
+                    <p className="text-sm font-semibold text-white">Premium organizer tools live in the iPhone app</p>
+                    <p className="mt-1 text-sm text-text-secondary">
+                      This event used premium features. Use an Event Pass in the iPhone app to schedule it again with the same premium organizer flow.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
 
         {/* Name Input (if needed) */}
         <AnimatePresence mode="wait">
-          {needsName && !isFinalized && (
+          {needsName && !isFinalized && !responseDeadlinePassed && (
             <motion.div
               key="name-input"
               initial={{ opacity: 0, y: 10 }}
@@ -323,7 +344,7 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
 
         {/* Completion Banner */}
         <AnimatePresence>
-          {responseStats.isComplete && !isFinalized && (
+          {responseStats.isComplete && !isFinalized && !responseDeadlinePassed && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -343,8 +364,28 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
           )}
         </AnimatePresence>
 
+        {responseDeadlinePassed && !isFinalized && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-xl border border-accent-red/20 bg-accent-red/10 p-4"
+          >
+            <div className="flex items-start gap-3">
+              <Lock className="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-red" aria-hidden="true" />
+              <div>
+                <p className="text-white font-medium">Voting has closed</p>
+                <p className="mt-1 text-sm text-text-secondary">
+                  {formattedDeadline
+                    ? `The organizer closed responses on ${formattedDeadline}. You can still view the poll results below.`
+                    : 'The organizer closed responses for this poll. You can still view the poll results below.'}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Progress indicator */}
-        {localName && !isFinalized && !responseStats.isComplete && responseStats.answered > 0 && (
+        {localName && !isFinalized && !responseDeadlinePassed && !responseStats.isComplete && responseStats.answered > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -358,7 +399,13 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
         {!isFinalized && (
           <div className="mb-4">
             <h2 className="text-sm font-medium text-text-secondary mb-3">
-              {needsName ? 'Available Time Slots' : responseStats.isComplete ? 'Your responses (tap to update)' : 'Tap to vote on each time slot'}
+              {responseDeadlinePassed
+                ? 'Responses are closed'
+                : needsName
+                ? 'Available Time Slots'
+                : responseStats.isComplete
+                ? 'Your responses (tap to update)'
+                : 'Tap to vote on each time slot'}
             </h2>
           </div>
         )}
@@ -374,7 +421,7 @@ export function PollPageClient({ pollId }: PollPageClientProps) {
               isFinalized={isFinalized}
               isBestOption={slot.id === bestSlotId}
               isSelected={poll.finalizedSlotId === slot.id}
-              disabled={needsName || submitResponseMutation.isPending}
+              disabled={needsName || submitResponseMutation.isPending || responseDeadlinePassed}
             />
           ))}
         </div>

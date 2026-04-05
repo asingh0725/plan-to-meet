@@ -7,6 +7,9 @@ export interface PollRow {
   created_at: string
   creator_session_id: string | null
   finalized_slot_id: string | null
+  is_premium?: boolean | null
+  details?: string | null
+  closes_at?: string | null
 }
 
 export interface TimeSlotRow {
@@ -42,6 +45,9 @@ export interface Poll {
   createdAt: string
   creatorSessionId: string | null
   finalizedSlotId: string | null
+  isPremium: boolean
+  details: string | null
+  closesAt: string | null
   timeSlots: TimeSlot[]
   responses: Response[]
   participants: Participant[]
@@ -79,6 +85,9 @@ export function transformPoll(row: PollRow): Omit<Poll, 'timeSlots' | 'responses
     createdAt: row.created_at,
     creatorSessionId: row.creator_session_id,
     finalizedSlotId: row.finalized_slot_id,
+    isPremium: row.is_premium ?? false,
+    details: row.details ?? null,
+    closesAt: row.closes_at ?? null,
   }
 }
 

@@ -113,7 +113,7 @@ struct PollDetailScreen: View {
                 HStack(spacing: 20) {
                     statItem(icon: "person.2", value: "\(viewModel.participantCount)", label: "Responded")
                     statItem(icon: "calendar", value: "\(viewModel.timeSlots.count)", label: "Time Slots")
-                    if poll.status == "open" {
+                    if poll.status == "open" && !viewModel.isVotingClosed {
                         statItem(icon: "checkmark.circle", value: "Open", label: "Status", valueColor: .green)
                     } else {
                         statItem(icon: "lock", value: "Closed", label: "Status", valueColor: Theme.textTertiary)
@@ -153,6 +153,17 @@ struct PollDetailScreen: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .background(Theme.accentBlue.opacity(0.1))
+            } else if viewModel.isVotingClosed {
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.fill")
+                        .foregroundColor(Theme.accentOrange)
+                    Text("Voting is closed for this poll")
+                        .font(.caption)
+                        .foregroundColor(Theme.accentOrange)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Theme.accentOrange.opacity(0.12))
             } else if viewModel.hasSubmitted {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
@@ -168,7 +179,7 @@ struct PollDetailScreen: View {
             Divider().background(Theme.border)
 
             // Instruction
-            if !isReadOnly {
+            if !isReadOnly && !viewModel.isVotingClosed {
                 Text(viewModel.hasSubmitted ? "Tap a slot to change your response" : "Tap to cycle: Yes → Maybe → No")
                     .font(.caption)
                     .foregroundColor(Theme.textTertiary)
@@ -178,6 +189,10 @@ struct PollDetailScreen: View {
             // Slots
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 16) {
+                    if poll.isPremium ?? false || poll.details != nil || poll.closesAt != nil {
+                        premiumDetailsSection(poll)
+                    }
+
                     ForEach(viewModel.slotsByDate, id: \.date) { group in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(formatDateHeader(group.date))
@@ -229,13 +244,13 @@ struct PollDetailScreen: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
 
-                scheduleAgainButton
+                scheduleAgainSection
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
             }
 
             // Submit button (only if not read-only)
-            if !isReadOnly {
+            if !isReadOnly && !viewModel.isVotingClosed {
                 Button(action: {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                     viewModel.submitResponses()
@@ -376,7 +391,60 @@ struct PollDetailScreen: View {
         }
     }
 
+    // MARK: - Premium Details
+
+    private func premiumDetailsSection(_ poll: SupabaseAPI.PollRow) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                if poll.isPremium ?? false {
+                    Label("Premium Event", systemImage: "sparkles")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.accentBlue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.accentBlue.opacity(0.12))
+                        .cornerRadius(999)
+                }
+
+                if let closesAtDate = poll.closesAtDate {
+                    Label(
+                        viewModel.isVotingClosed ? "Voting Closed" : "Deadline \(deadlineText(closesAtDate))",
+                        systemImage: viewModel.isVotingClosed ? "lock.fill" : "clock.badge.exclamationmark"
+                    )
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(viewModel.isVotingClosed ? Theme.accentOrange : Theme.textSecondary)
+                }
+            }
+
+            if let details = poll.details, !details.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Organizer Note")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.textSecondary)
+                    Text(details)
+                        .font(.subheadline)
+                        .foregroundColor(Theme.textPrimary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Theme.cardBackground)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+    }
+
     // MARK: - Schedule Again
+
+    private var scheduleAgainSection: some View {
+        Group {
+            if viewModel.poll?.isPremium ?? false {
+                scheduleAgainButton
+            } else {
+                scheduleAgainLockedCard
+            }
+        }
+    }
 
     private var scheduleAgainButton: some View {
         Button {
@@ -401,6 +469,30 @@ struct PollDetailScreen: View {
             ScheduleAgainSheet(sourcePollId: pollId, pollTitle: viewModel.poll?.title ?? "Poll")
                 .environmentObject(appState)
         }
+    }
+
+    private var scheduleAgainLockedCard: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "sparkles")
+                .font(.subheadline)
+                .foregroundColor(Theme.accentBlue)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Schedule Again is a premium event tool")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Theme.textPrimary)
+
+                Text("Use an Event Pass on the next poll when you want organizer notes, response deadlines, and one-tap schedule-again.")
+                    .font(.caption)
+                    .foregroundColor(Theme.textTertiary)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(Theme.cardBackground)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
     }
 
     // MARK: - Stat Item
@@ -429,9 +521,10 @@ struct PollDetailScreen: View {
         let yesCount = viewModel.responseCountForSlot(slot.id, type: "available")
         let maybeCount = viewModel.responseCountForSlot(slot.id, type: "maybe")
         let isBestSlot = viewModel.bestTimeSlot?.slotId == slot.id
+        let isInteractionLocked = isReadOnly || viewModel.isVotingClosed
 
         return Group {
-            if isReadOnly {
+            if isInteractionLocked {
                 // Read-only: just display
                 slotContent(slot: slot, myResponse: myResponse, yesCount: yesCount, maybeCount: maybeCount, isBestSlot: isBestSlot)
             } else {
@@ -590,6 +683,12 @@ struct PollDetailScreen: View {
         let h = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour)
         return minute == 0 ? "\(h) \(period)" : "\(h):\(String(format: "%02d", minute)) \(period)"
     }
+
+    private func deadlineText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, h:mm a"
+        return formatter.string(from: date)
+    }
 }
 
 // MARK: - Best Time Info
@@ -654,6 +753,10 @@ final class PollDetailScreenViewModel: ObservableObject {
 
     var participantCount: Int {
         participants.count
+    }
+
+    var isVotingClosed: Bool {
+        poll?.isVotingClosed ?? false
     }
 
     var bestTimeSlot: BestTimeSlotInfo? {
@@ -740,6 +843,10 @@ final class PollDetailScreenViewModel: ObservableObject {
 
     func submitResponses() {
         guard !isSubmitting else { return }
+        guard !isVotingClosed else {
+            errorMessage = "Voting is closed for this poll."
+            return
+        }
         isSubmitting = true
         errorMessage = nil
 
@@ -862,6 +969,21 @@ struct ScheduleAgainSheet: View {
                         }
                     }
 
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(Theme.accentBlue)
+                        Text(appState.eventPassBalance == 1
+                             ? "Uses 1 Event Pass. 1 pass available."
+                             : "Uses 1 Event Pass. \(appState.eventPassBalance) passes available.")
+                            .font(.caption)
+                            .foregroundColor(Theme.textSecondary)
+                        Spacer()
+                    }
+                    .padding(12)
+                    .background(Theme.cardBackground)
+                    .cornerRadius(12)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+
                     if let error = errorMessage {
                         Text(error)
                             .font(.caption)
@@ -887,9 +1009,9 @@ struct ScheduleAgainSheet: View {
                             Text(isCloning ? "Creating…" : "Create New Poll")
                                 .font(.body.weight(.semibold))
                         }
-                        .primaryButtonStyle(isEnabled: !isCloning && endDate >= startDate)
+                        .primaryButtonStyle(isEnabled: !isCloning && endDate >= startDate && appState.hasEventPasses)
                     }
-                    .disabled(isCloning || endDate < startDate)
+                    .disabled(isCloning || endDate < startDate || !appState.hasEventPasses)
                 }
                 .padding(20)
             }
@@ -930,10 +1052,23 @@ struct ScheduleAgainSheet: View {
     }
 
     private func clone() {
+        guard appState.hasEventPasses else {
+            errorMessage = "You need an Event Pass to schedule this premium event again."
+            return
+        }
+
         isCloning = true
         errorMessage = nil
         let sid = appState.sessionId
         let name = appState.displayNameOrDefault
+        let reservedEventPass = appState.consumeEventPasses()
+
+        if !reservedEventPass {
+            errorMessage = "You need an Event Pass to schedule this premium event again."
+            isCloning = false
+            return
+        }
+
         Task {
             do {
                 let newId = try await SupabaseAPI.clonePoll(
@@ -946,6 +1081,7 @@ struct ScheduleAgainSheet: View {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 clonedPollId = newId
             } catch {
+                appState.refundEventPasses()
                 errorMessage = error.localizedDescription
             }
             isCloning = false

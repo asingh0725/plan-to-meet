@@ -5,6 +5,7 @@ import UserNotifications
 struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = SettingsViewModel()
+    @StateObject private var eventPassStore = EventPassStore.shared
     @State private var displayNameInput: String = ""
 
     var body: some View {
@@ -17,6 +18,7 @@ struct SettingsView: View {
                         profileSection
                         notificationsSection
                         calendarSection
+                        premiumSection
                         aboutSection
                     }
                     .padding(.horizontal, 16)
@@ -32,6 +34,9 @@ struct SettingsView: View {
             displayNameInput = appState.displayName
             viewModel.checkCalendarStatus()
             viewModel.checkPushStatus()
+            Task {
+                await eventPassStore.refreshProducts()
+            }
         }
     }
 
@@ -296,6 +301,73 @@ struct SettingsView: View {
 
     // MARK: - About Section
 
+    private var premiumSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: "Event Passes", icon: "sparkles")
+
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Premium tools for organizers")
+                                .font(.body.weight(.medium))
+                                .foregroundColor(Theme.textPrimary)
+
+                            Text("Keep voting free for everyone else. Use Event Passes for organizer notes, response deadlines, and premium schedule-again tools.")
+                                .font(.caption)
+                                .foregroundColor(Theme.textTertiary)
+                        }
+
+                        Spacer()
+
+                        Text("\(appState.eventPassBalance)")
+                            .font(.title3.weight(.bold))
+                            .foregroundColor(Theme.accentBlue)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Theme.accentBlue.opacity(0.12))
+                            .cornerRadius(12)
+                    }
+
+                    Text(appState.eventPassBalance == 1 ? "1 Event Pass ready" : "\(appState.eventPassBalance) Event Passes ready")
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(Theme.accentBlue)
+                }
+                .padding(16)
+
+                Divider().background(Theme.border)
+
+                VStack(spacing: 0) {
+                    ForEach(Array(eventPassStore.packages.enumerated()), id: \.element.id) { index, package in
+                        purchaseRow(package)
+                        if index < eventPassStore.packages.count - 1 {
+                            Divider().background(Theme.border)
+                        }
+                    }
+                }
+
+                if let purchaseMessage = eventPassStore.purchaseMessage {
+                    Divider().background(Theme.border)
+
+                    Label(purchaseMessage, systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                        .padding(16)
+                }
+
+                if let errorMessage = eventPassStore.errorMessage {
+                    Divider().background(Theme.border)
+
+                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundColor(Theme.accentOrange)
+                        .padding(16)
+                }
+            }
+            .cardStyle()
+        }
+    }
+
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(title: "About", icon: "info.circle")
@@ -334,6 +406,45 @@ struct SettingsView: View {
             Text(value)
                 .font(.body)
                 .foregroundColor(Theme.textSecondary)
+        }
+        .padding(16)
+    }
+
+    private func purchaseRow(_ package: EventPassStore.PackageDescriptor) -> some View {
+        let product = eventPassStore.product(for: package.productId)
+
+        return HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(package.title)
+                    .font(.body.weight(.medium))
+                    .foregroundColor(Theme.textPrimary)
+
+                Text(package.subtitle)
+                    .font(.caption)
+                    .foregroundColor(Theme.textTertiary)
+
+                Text(package.eventPassCount == 1 ? "1 Event Pass" : "\(package.eventPassCount) Event Passes")
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(Theme.accentBlue)
+            }
+
+            Spacer()
+
+            Button {
+                Task {
+                    await eventPassStore.purchase(package)
+                }
+            } label: {
+                Text(product?.displayPrice ?? "Unavailable")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(product == nil ? Theme.textTertiary : .white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(product == nil ? Theme.elevatedBackground : Theme.accentBlue)
+                    .cornerRadius(10)
+            }
+            .buttonStyle(.plain)
+            .disabled(product == nil || eventPassStore.isPurchasing)
         }
         .padding(16)
     }

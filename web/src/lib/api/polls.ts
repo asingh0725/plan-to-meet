@@ -112,6 +112,9 @@ export interface CreatePollInput {
   durationMinutes: number
   creatorSessionId: string
   timeSlots: Array<{ day: string; startTime: string; endTime: string }>
+  isPremium?: boolean
+  details?: string | null
+  closesAt?: string | null
 }
 
 export async function clonePoll(
@@ -161,6 +164,8 @@ export async function clonePoll(
       created_at: now,
       creator_session_id: creatorSessionId,
       parent_poll_id: sourcePollId,
+      ...(source.is_premium ? { is_premium: true } : {}),
+      ...(source.details ? { details: source.details } : {}),
     },
     headers: { Prefer: 'return=minimal' },
   })
@@ -196,6 +201,9 @@ export async function createPoll(input: CreatePollInput): Promise<string> {
       status: 'open',
       created_at: now,
       creator_session_id: input.creatorSessionId,
+      ...(input.isPremium ? { is_premium: true } : {}),
+      ...(input.details ? { details: input.details } : {}),
+      ...(input.closesAt ? { closes_at: input.closesAt } : {}),
     },
     headers: { Prefer: 'return=minimal' },
   })

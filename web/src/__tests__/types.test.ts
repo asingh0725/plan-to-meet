@@ -19,6 +19,9 @@ describe('transformPoll', () => {
     created_at: '2025-01-01T12:00:00Z',
     creator_session_id: 'session-xyz',
     finalized_slot_id: null,
+    is_premium: true,
+    details: 'Bring your laptops.',
+    closes_at: '2025-01-02T17:00:00Z',
   }
 
   it('maps snake_case fields to camelCase', () => {
@@ -28,6 +31,9 @@ describe('transformPoll', () => {
     expect(poll.creatorSessionId).toBe('session-xyz')
     expect(poll.finalizedSlotId).toBeNull()
     expect(poll.createdAt).toBe('2025-01-01T12:00:00Z')
+    expect(poll.isPremium).toBe(true)
+    expect(poll.details).toBe('Bring your laptops.')
+    expect(poll.closesAt).toBe('2025-01-02T17:00:00Z')
   })
 
   it('preserves status', () => {
@@ -39,6 +45,18 @@ describe('transformPoll', () => {
     const finalized = transformPoll({ ...pollRow, finalized_slot_id: 'slot-123', status: 'finalized' })
     expect(finalized.finalizedSlotId).toBe('slot-123')
     expect(finalized.status).toBe('finalized')
+  })
+
+  it('defaults premium fields when they are missing', () => {
+    const basic = transformPoll({
+      ...pollRow,
+      is_premium: undefined,
+      details: undefined,
+      closes_at: undefined,
+    })
+    expect(basic.isPremium).toBe(false)
+    expect(basic.details).toBeNull()
+    expect(basic.closesAt).toBeNull()
   })
 })
 

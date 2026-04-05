@@ -78,3 +78,7 @@ ALTER TABLE polls
 
 CREATE INDEX IF NOT EXISTS polls_parent_poll_id_idx ON polls(parent_poll_id)
   WHERE parent_poll_id IS NOT NULL;
+
+-- 7. Premium poll fields (event passes)
+-- ----------------------------------------
+\i premium_polls.sql

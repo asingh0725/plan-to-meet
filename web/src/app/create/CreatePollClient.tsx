@@ -138,6 +138,13 @@ export function CreatePollClient() {
         </div>
 
         <div className="space-y-6">
+          <div className="rounded-2xl border border-accent-blue/20 bg-accent-blue/10 p-4">
+            <p className="text-sm font-semibold text-text-primary">Premium event tools live in the iPhone app</p>
+            <p className="mt-2 text-sm text-text-secondary">
+              Use Event Passes there for organizer notes, response deadlines, and premium schedule-again. Web creation stays fast and free for basic polls.
+            </p>
+          </div>
+
           {/* Title */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-text-secondary" htmlFor="poll-title">

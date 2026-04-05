@@ -20,6 +20,10 @@ final class CreatePollViewModel: ObservableObject {
     @Published var isCreating: Bool = false
     @Published var createdPollId: String?
     @Published var errorMessage: String?
+    @Published var isPremiumPoll: Bool = false
+    @Published var organizerNote: String = ""
+    @Published var hasResponseDeadline: Bool = false
+    @Published var responseDeadline: Date = CreatePollViewModel.defaultPremiumDeadline()
 
     private let eventStore = EKEventStore()
 
@@ -31,6 +35,7 @@ final class CreatePollViewModel: ObservableObject {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && dateRangeEnd >= dateRangeStart
             && !selectedCells.isEmpty
+            && (!isPremiumPoll || !hasResponseDeadline || responseDeadline > Date())
     }
 
     var slotCount: Int { selectedCells.count }
@@ -59,6 +64,21 @@ final class CreatePollViewModel: ObservableObject {
         let validDates = Set(computeDateColumns())
         selectedCells = selectedCells.filter { validDates.contains(String($0.split(separator: "|").first ?? "")) }
         if useCalendar { fetchCalendarEvents() }
+        if hasResponseDeadline && responseDeadline <= Date() {
+            responseDeadline = suggestedResponseDeadline()
+        }
+    }
+
+    func onOrganizerNoteChanged(_ updatedValue: String) {
+        if updatedValue.count > AppConstants.Premium.organizerNoteLimit {
+            organizerNote = String(updatedValue.prefix(AppConstants.Premium.organizerNoteLimit))
+        }
+    }
+
+    func onPremiumToggleChanged(_ enabled: Bool) {
+        if enabled && hasResponseDeadline && responseDeadline <= Date() {
+            responseDeadline = suggestedResponseDeadline()
+        }
     }
 
     private func computeDateColumns() -> [String] {
@@ -182,8 +202,26 @@ final class CreatePollViewModel: ObservableObject {
 
     // MARK: - Create Poll
 
+    private func suggestedResponseDeadline() -> Date {
+        let calendar = Calendar.current
+        if let endOfWindow = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: dateRangeEnd),
+           endOfWindow > Date() {
+            return endOfWindow
+        }
+        return Date().addingTimeInterval(24 * 60 * 60)
+    }
+
+    private static func defaultPremiumDeadline() -> Date {
+        Date().addingTimeInterval(24 * 60 * 60)
+    }
+
     func createPoll() {
         guard isFormValid, !isCreating else { return }
+        if isPremiumPoll && !AppState.shared.hasEventPasses {
+            errorMessage = "You need an Event Pass to create a premium poll. Top up in Settings."
+            return
+        }
+
         isCreating = true; errorMessage = nil
         let pollId = UUID().uuidString.lowercased()
         let sessionId = AppState.shared.sessionId
@@ -191,16 +229,37 @@ final class CreatePollViewModel: ObservableObject {
         let slots = generateSlots(pollId: pollId)
         let blocks = generateBlocks(pollId: pollId)
         let pollTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let premiumNote = organizerNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let premiumDeadline = isPremiumPoll && hasResponseDeadline ? responseDeadline : nil
         let dur = durationMinutes
+        let reservedEventPass = isPremiumPoll ? AppState.shared.consumeEventPasses() : false
+
+        if isPremiumPoll && !reservedEventPass {
+            errorMessage = "You need an Event Pass to create a premium poll. Top up in Settings."
+            isCreating = false
+            return
+        }
+
         Task {
             do {
-                try await SupabaseAPI.createPoll(id: pollId, title: pollTitle, durationMinutes: dur, creatorSessionId: sessionId)
+                try await SupabaseAPI.createPoll(
+                    id: pollId,
+                    title: pollTitle,
+                    durationMinutes: dur,
+                    creatorSessionId: sessionId,
+                    isPremium: isPremiumPoll,
+                    details: premiumNote.isEmpty ? nil : premiumNote,
+                    closesAt: premiumDeadline
+                )
                 try await SupabaseAPI.insertAvailabilityBlocks(pollId: pollId, blocks: blocks)
                 try await SupabaseAPI.insertTimeSlots(pollId: pollId, slots: slots)
                 try await SupabaseAPI.insertParticipant(pollId: pollId, sessionId: sessionId, displayName: displayName)
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 createdPollId = pollId
             } catch {
+                if reservedEventPass {
+                    AppState.shared.refundEventPasses()
+                }
                 errorMessage = error.localizedDescription
                 UINotificationFeedbackGenerator().notificationOccurred(.error)
             }
@@ -213,6 +272,7 @@ final class CreatePollViewModel: ObservableObject {
 
 struct CreatePollView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = CreatePollViewModel()
     @State private var showStartDatePicker = false
     @State private var showEndDatePicker = false
@@ -269,6 +329,7 @@ struct CreatePollView: View {
                 dateRangeSection
                 calendarSection
                 availabilitySection
+                premiumSection
                 slotPreview
 
                 if let error = viewModel.errorMessage {
@@ -432,6 +493,120 @@ struct CreatePollView: View {
         }
     }
 
+    // MARK: - Premium Event
+
+    private var premiumSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Premium Event", systemImage: "sparkles")
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(Theme.textSecondary)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Use 1 Event Pass")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(Theme.textPrimary)
+
+                        Text("Add an organizer note, set a response deadline, and unlock premium schedule-again tools.")
+                            .font(.caption)
+                            .foregroundColor(Theme.textTertiary)
+                    }
+
+                    Spacer()
+
+                    Text(appState.eventPassBalance == 1 ? "1 pass" : "\(appState.eventPassBalance) passes")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.accentBlue)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.accentBlue.opacity(0.12))
+                        .cornerRadius(999)
+                }
+
+                Toggle(
+                    "Premium Event",
+                    isOn: Binding(
+                        get: { viewModel.isPremiumPoll },
+                        set: {
+                            viewModel.isPremiumPoll = $0
+                            viewModel.onPremiumToggleChanged($0)
+                        }
+                    )
+                )
+                .labelsHidden()
+                .overlay(alignment: .leading) {
+                    Text(viewModel.isPremiumPoll ? "Enabled" : "Off")
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(viewModel.isPremiumPoll ? Theme.accentBlue : Theme.textTertiary)
+                }
+                .tint(Theme.accentBlue)
+                .disabled(!appState.hasEventPasses)
+
+                if !appState.hasEventPasses {
+                    Text("You have no Event Passes left. Buy more from Settings when you want premium organizer tools.")
+                        .font(.caption)
+                        .foregroundColor(Theme.accentOrange)
+                }
+
+                if viewModel.isPremiumPoll {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Organizer Note")
+                                .font(.caption.weight(.medium))
+                                .foregroundColor(Theme.textSecondary)
+                            Spacer()
+                            Text("\(viewModel.organizerNote.count)/\(AppConstants.Premium.organizerNoteLimit)")
+                                .font(.caption2)
+                                .foregroundColor(Theme.textTertiary)
+                        }
+
+                        TextEditor(text: $viewModel.organizerNote)
+                            .frame(minHeight: 90)
+                            .padding(8)
+                            .scrollContentBackground(.hidden)
+                            .background(Theme.elevatedBackground)
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Theme.border, lineWidth: 1)
+                            )
+                            .onChange(of: viewModel.organizerNote) { newValue in
+                                viewModel.onOrganizerNoteChanged(newValue)
+                            }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Toggle("Set a response deadline", isOn: $viewModel.hasResponseDeadline)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(Theme.textPrimary)
+                            .tint(Theme.accentBlue)
+
+                        if viewModel.hasResponseDeadline {
+                            DatePicker(
+                                "Deadline",
+                                selection: $viewModel.responseDeadline,
+                                in: Date()...,
+                                displayedComponents: [.date, .hourAndMinute]
+                            )
+                            .datePickerStyle(.compact)
+                            .tint(Theme.accentBlue)
+                            .colorScheme(.dark)
+
+                            Text("Voting will close on PlanToMeet surfaces after this deadline.")
+                                .font(.caption)
+                                .foregroundColor(Theme.textTertiary)
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .background(Theme.cardBackground)
+            .cornerRadius(12)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 1))
+        }
+    }
+
     // MARK: - Slot Preview
 
     private var slotPreview: some View {
@@ -488,11 +663,16 @@ struct CreatePollView: View {
                 } else {
                     Image(systemName: "checkmark").font(.body.weight(.semibold))
                 }
-                Text(viewModel.isCreating ? "Creating..." : "Create Poll").font(.body.weight(.semibold))
+                Text(viewModel.isCreating ? "Creating..." : (viewModel.isPremiumPoll ? "Create Premium Poll" : "Create Poll"))
+                    .font(.body.weight(.semibold))
             }
-            .primaryButtonStyle(isEnabled: viewModel.isFormValid && !viewModel.isCreating)
+            .primaryButtonStyle(
+                isEnabled: viewModel.isFormValid
+                    && !viewModel.isCreating
+                    && (!viewModel.isPremiumPoll || appState.hasEventPasses)
+            )
         }
-        .disabled(!viewModel.isFormValid || viewModel.isCreating)
+        .disabled(!viewModel.isFormValid || viewModel.isCreating || (viewModel.isPremiumPoll && !appState.hasEventPasses))
     }
 }
 
